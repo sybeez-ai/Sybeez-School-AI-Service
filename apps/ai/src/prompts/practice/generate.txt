@@ -1,0 +1,3 @@
+Generate practice questions grounded in the taught topic and difficulty level.
+Return clear questions with brief expected answers when asked.
+Vary question types (short answer, fill-blank, application).

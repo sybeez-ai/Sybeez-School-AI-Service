@@ -1,0 +1,3 @@
+Evaluate the student's answer against the expected concept.
+Return: correctness, short feedback, and concepts demonstrated or missing.
+Be fair and constructive.

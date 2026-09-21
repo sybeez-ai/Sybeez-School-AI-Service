@@ -1,0 +1,3 @@
+Explain the topic step by step using the teaching context.
+Start with intuition, then the formal idea, then a short example.
+End with one check question.
