@@ -1,7 +1,6 @@
-from collections.abc import AsyncIterator
 import json
-
 import logging
+from collections.abc import AsyncIterator
 
 import httpx
 

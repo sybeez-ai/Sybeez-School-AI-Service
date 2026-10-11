@@ -1,6 +1,5 @@
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from src.api.dependencies import AuthDep, BearerToken
 from src.modules.practice.schemas import PracticeRequest, PracticeResponse

@@ -159,6 +159,95 @@ def auth_from_payload(payload: dict[str, Any]) -> AuthContext:
     )
 
 
+# School backend create_access_token (Sybeez-School-Backend apps/api/src/core/security.py)
+# signs with JWT_SECRET and sets sub, role, type=access, iat, exp, optional school_id
+# and membership_id, plus extra sid/platform_role. It does not set iss or aud.
+_HEADER_KEY_FIELDS = ("jku", "x5u", "jwk")
+_SESSION_TOKEN_TYPE = "access"
+
+
+def _reject_header_keys(header: dict[str, Any]) -> None:
+    if any(header.get(field) for field in _HEADER_KEY_FIELDS):
+        logger.warning("rejected token header key reference")
+        raise UnauthorizedError("Invalid or expired token")
+
+
+def _unverified_header(token: str) -> dict[str, Any]:
+    if not token or token.count(".") != 2:
+        raise UnauthorizedError("Invalid or expired token")
+    try:
+        header = jwt.get_unverified_header(token)
+    except JWTError as exc:
+        raise UnauthorizedError("Invalid or expired token") from exc
+    if not isinstance(header, dict):
+        raise UnauthorizedError("Invalid or expired token")
+    _reject_header_keys(header)
+    return header
+
+
+def _claim_matches(actual: Any, expected: str) -> bool:
+    if isinstance(actual, list):
+        return expected in actual
+    return actual == expected
+
+
+def _require_backend_reserved_claim(payload: dict[str, Any], name: str, expected: str) -> None:
+    """Match the issuer or audience the backend actually puts on the token.
+
+    create_access_token omits both claims, so the expected value stays empty and a
+    token that carries one is rejected. Set JWT_ISSUER or JWT_AUDIENCE only when
+    the backend starts setting the same claim.
+    """
+    actual = payload.get(name)
+    if not expected:
+        if actual:
+            logger.warning("session token carried unexpected %s", name)
+            raise UnauthorizedError("Invalid or expired token")
+        return
+    if not _claim_matches(actual, expected):
+        logger.warning("session token %s rejected", name)
+        raise UnauthorizedError("Invalid or expired token")
+
+
+def _decode_session_token(token: str) -> dict[str, Any]:
+    """Verify a School backend HS256 access token. The key is only JWT_SECRET."""
+    settings = get_settings()
+    secret = settings.jwt_secret
+    if settings.jwt_algorithm != "HS256" or not secret:
+        logger.error("session token verification is not configured")
+        raise UnauthorizedError("Invalid or expired token")
+    issuer = settings.jwt_issuer.strip()
+    audience = settings.jwt_audience.strip()
+    options: dict[str, Any] = {"require_exp": True, "leeway": 30}
+    decode_kwargs: dict[str, Any] = {}
+    if issuer:
+        decode_kwargs["issuer"] = issuer
+    if audience:
+        decode_kwargs["audience"] = audience
+    else:
+        # Backend tokens omit aud. A token that includes one is rejected afterwards.
+        options["verify_aud"] = False
+    try:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            options=options,
+            **decode_kwargs,
+        )
+    except JWTError:
+        logger.warning("session token signature or claims rejected")
+        raise UnauthorizedError("Invalid or expired token") from None
+    if not isinstance(payload, dict):
+        raise UnauthorizedError("Invalid or expired token")
+    if payload.get("type") != _SESSION_TOKEN_TYPE:
+        logger.warning("session token type rejected")
+        raise UnauthorizedError("Invalid or expired token")
+    _require_backend_reserved_claim(payload, "iss", settings.jwt_issuer.strip())
+    _require_backend_reserved_claim(payload, "aud", settings.jwt_audience.strip())
+    return payload
+
+
 def _require_audience(payload: dict[str, Any], client_id: str) -> None:
     token_use = payload.get("token_use")
     if token_use == "access":
@@ -173,22 +262,10 @@ def _require_audience(payload: dict[str, Any], client_id: str) -> None:
     raise UnauthorizedError("Invalid or expired token")
 
 
-async def decode_access_token(token: str) -> dict[str, Any]:
+async def _decode_cognito_token(token: str, header: dict[str, Any]) -> dict[str, Any]:
     settings = get_settings()
     if not settings.cognito_configured:
         logger.error("cognito settings are missing")
-        raise UnauthorizedError("Invalid or expired token")
-    if not token or token.count(".") != 2:
-        raise UnauthorizedError("Invalid or expired token")
-    try:
-        header = jwt.get_unverified_header(token)
-    except JWTError as exc:
-        raise UnauthorizedError("Invalid or expired token") from exc
-    if header.get("alg") != "RS256":
-        logger.warning("rejected token alg")
-        raise UnauthorizedError("Invalid or expired token")
-    if header.get("jku") or header.get("x5u") or header.get("jwk"):
-        logger.warning("rejected token header key reference")
         raise UnauthorizedError("Invalid or expired token")
     kid = header.get("kid")
     if not isinstance(kid, str) or not kid:
@@ -211,6 +288,17 @@ async def decode_access_token(token: str) -> dict[str, Any]:
         raise UnauthorizedError("Invalid or expired token")
     _require_audience(payload, settings.cognito_app_client_id)
     return payload
+
+
+async def decode_access_token(token: str) -> dict[str, Any]:
+    header = _unverified_header(token)
+    algorithm = header.get("alg")
+    if algorithm == "RS256":
+        return await _decode_cognito_token(token, header)
+    if algorithm == "HS256":
+        return _decode_session_token(token)
+    logger.warning("rejected token alg")
+    raise UnauthorizedError("Invalid or expired token")
 
 
 async def authenticate_token(token: str) -> AuthContext:

@@ -50,9 +50,12 @@ class Settings(BaseSettings):
     cognito_app_client_id: str = ""
     cognito_jwks_cache_seconds: int = 3600
 
-    # Legacy HMAC settings are ignored for request authentication.
+    # School backend session tokens: HS256 signed with the shared JWT_SECRET.
+    # create_access_token does not set iss or aud. Leave these empty to match.
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
+    jwt_issuer: str = ""
+    jwt_audience: str = ""
 
     aws_region: str = ""
     aws_secrets_manager_secret_id: str = ""
@@ -163,6 +166,23 @@ class Settings(BaseSettings):
         return self.llm_model
 
 
+_INSECURE_SECRETS = frozenset(
+    {
+        "",
+        "change-me-in-production",
+        "change-me-in-production-use-long-random-string",
+        "dev-only-change-me",
+    }
+)
+
+
+def secret_is_insecure(value: str) -> bool:
+    cleaned = (value or "").strip()
+    if cleaned in _INSECURE_SECRETS:
+        return True
+    return len(cleaned) < 32
+
+
 def validate_production_settings(settings: Settings) -> None:
     """Fail closed before serving when production is pointed at dev defaults."""
     if settings.app_env != "production":
@@ -174,6 +194,8 @@ def validate_production_settings(settings: Settings) -> None:
         problems.append("COGNITO_USER_POOL_ID")
     if not settings.cognito_app_client_id:
         problems.append("COGNITO_APP_CLIENT_ID")
+    if settings.jwt_algorithm != "HS256" or secret_is_insecure(settings.jwt_secret):
+        problems.append("JWT_SECRET")
     if "sybeez:sybeez@" in settings.database_url or not settings.database_url.strip():
         problems.append("DATABASE_URL")
     if settings.core_internal_token == "dev-internal-service-token":

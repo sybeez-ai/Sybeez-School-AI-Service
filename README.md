@@ -44,7 +44,9 @@ Docs: http://localhost:8001/docs
 ## Production
 
 - `GET /health` is the process check. `GET /ready` checks Postgres.
-- Every other route requires a Cognito access or ID token. `school_id`, `user_id`, and `role` are taken from that token.
+- Every other route requires a Cognito access or ID token, or a School backend HS256 session token signed with `JWT_SECRET`. `school_id`, `user_id`, and `role` are taken from that token. The backend puts the user id in `sub` and does not set `iss` or `aud`.
+- Calls back to Core still send `X-Internal-Token` (`CORE_INTERNAL_TOKEN`), the same value as the backend `AI_SERVICE_TOKEN`.
+- GitHub Actions deploy variables are in [docs/deploy-ai.md](docs/deploy-ai.md).
 - Each database transaction runs `set_config('app.school_id', ..., true)` and `set_config('app.user_id', ..., true)` so row level security applies. Apply migration `0002_rls`.
 - The database role must not be a superuser and must not have `BYPASSRLS`.
 - The Fargate image is `infra/docker/ai.Dockerfile`. Pass secrets as environment variables, or set `AWS_SECRETS_MANAGER_SECRET_ID` and grant the task role `secretsmanager:GetSecretValue`.

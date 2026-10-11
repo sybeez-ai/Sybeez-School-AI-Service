@@ -18,16 +18,6 @@ def test_missing_token_is_rejected():
     assert response.json()["error"]["code"] == "unauthorized"
 
 
-def test_hs256_backend_token_is_rejected():
-    token = jwt.encode(
-        {"sub": str(USER_A), "role": "STUDENT", "school_id": str(SCHOOL_A), "type": "access"},
-        "change-me-in-production",
-        algorithm="HS256",
-    )
-    response = client.get("/api/v1/ai/conversations", headers=bearer(token))
-    assert response.status_code == 401
-
-
 def test_alg_none_is_rejected():
     def encode(data: dict) -> str:
         raw = base64.urlsafe_b64encode(json.dumps(data).encode()).rstrip(b"=")

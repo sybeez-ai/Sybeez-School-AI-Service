@@ -146,6 +146,7 @@ def test_production_error_does_not_echo_password():
     message = str(exc.value)
     assert password not in message
     assert "COGNITO_REGION" in message
+    assert "JWT_SECRET" in message
     assert "CORE_INTERNAL_TOKEN" in message
 
 
@@ -156,6 +157,7 @@ def test_production_settings_accept_real_config():
         cognito_region="us-east-1",
         cognito_user_pool_id="us-east-1_abc",
         cognito_app_client_id="client",
+        jwt_secret="prod-jwt-secret-at-least-32-characters",
         core_internal_token="prod-internal-token",
     )
     validate_production_settings(settings)
