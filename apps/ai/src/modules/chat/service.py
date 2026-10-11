@@ -1,4 +1,4 @@
-from uuid import UUID
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,9 +10,11 @@ from src.modules.conversations.schemas import ConversationCreate
 from src.modules.conversations.service import ConversationService
 from src.modules.memory.service import MemoryService
 from src.modules.retrieval.service import RetrievalService
-from src.providers.llm import get_llm
+from src.providers.llm import get_llm, guarded_complete
 from src.shared.enums import MessageRole
 from src.shared.utils import load_prompt
+
+logger = logging.getLogger("sybeez.ai.chat")
 
 
 class ChatService:
@@ -47,16 +49,16 @@ class ChatService:
             auth=auth, conversation_id=conv.id, role=MessageRole.USER, content=body.message
         )
 
-        history = await self.conversations.repo.recent_messages(conv.id, limit=12)
+        history = await self.conversations.repo.recent_messages(conv.id, school_id=school_id, limit=12)
         history_text = "\n".join(f"{m.role}: {m.content}" for m in history)
 
         retrieved = await self.retrieval.search(
-            school_id=school_id,
+            auth,
             query=body.message,
             subject_id=conv.subject_id,
             class_id=conv.class_id or learning.student.class_id,
         )
-        recalled = await self.memory.recall(school_id=school_id, student_id=learning.student.id)
+        recalled = await self.memory.recall(auth, student_id=learning.student.id, query=body.message)
 
         system = load_prompt("system/ai_teacher.txt")
         teaching = load_prompt("teaching/explain.txt")
@@ -69,7 +71,7 @@ class ChatService:
             f"Respond as the AI Teacher."
         )
 
-        reply = await self.llm.complete(system=system, user=user_prompt)
+        reply = await guarded_complete(self.llm, system=system, user=user_prompt)
         assistant = await self.conversations.append(
             auth=auth,
             conversation_id=conv.id,
@@ -110,10 +112,10 @@ class ChatService:
             auth=auth, conversation_id=conv.id, role=MessageRole.USER, content=body.message
         )
 
-        history = await self.conversations.repo.recent_messages(conv.id, limit=12)
+        history = await self.conversations.repo.recent_messages(conv.id, school_id=school_id, limit=12)
         history_text = "\n".join(f"{m.role}: {m.content}" for m in history)
-        retrieved = await self.retrieval.search(school_id=school_id, query=body.message, subject_id=conv.subject_id)
-        recalled = await self.memory.recall(school_id=school_id, student_id=learning.student.id)
+        retrieved = await self.retrieval.search(auth, query=body.message, subject_id=conv.subject_id)
+        recalled = await self.memory.recall(auth, student_id=learning.student.id, query=body.message)
 
         system = load_prompt("system/ai_teacher.txt")
         user_prompt = (
@@ -126,9 +128,14 @@ class ChatService:
 
         parts: list[str] = []
         yield {"type": "meta", "conversation_id": str(conv.id)}
-        async for token in self.llm.stream(system=system, user=user_prompt):
-            parts.append(token)
-            yield {"type": "token", "content": token}
+        try:
+            async for token in self.llm.stream(system=system, user=user_prompt):
+                parts.append(token)
+                yield {"type": "token", "content": token}
+        except Exception:
+            logger.exception("llm stream failed")
+            yield {"type": "error", "message": "The teacher could not finish this response"}
+            return
 
         full = "".join(parts)
         msg = await self.conversations.append(

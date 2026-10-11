@@ -1,0 +1,169 @@
+name: AI service
+
+on:
+  pull_request:
+  push:
+    branches: [Production, release]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ai
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sybeez
+          POSTGRES_PASSWORD: sybeez
+          POSTGRES_DB: sybeez
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sybeez -d sybeez"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      APP_ENV: test
+      DATABASE_URL_SYNC: postgresql://sybeez:sybeez@127.0.0.1:5432/sybeez
+      COGNITO_REGION: us-east-1
+      COGNITO_USER_POOL_ID: us-east-1_TestPool
+      COGNITO_APP_CLIENT_ID: test-client-id
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check src tests
+      - name: Test
+        run: pytest -q
+
+  deploy:
+    name: Deploy
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/Production' || github.ref == 'refs/heads/release')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ap-south-1
+      ECR_REPOSITORY: sybeez-school-ai
+      ECS_CLUSTER: sybeez-school-cluster
+      ECS_SERVICE: sybeez-school-ai
+      TASK_FAMILY: sybeez-school-ai
+      AWS_AI_SUBNETS: ${{ vars.AWS_AI_SUBNETS }}
+      AWS_AI_SECURITY_GROUP: ${{ vars.AWS_AI_SECURITY_GROUP }}
+      AWS_AI_ASSIGN_PUBLIC_IP: ${{ vars.AWS_AI_ASSIGN_PUBLIC_IP || 'DISABLED' }}
+      AWS_AI_CONTAINER: ${{ vars.AWS_AI_CONTAINER || 'sybeez-school-ai' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_AI_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker build -f infra/docker/ai.Dockerfile \
+            -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Download current task definition
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task.json
+
+      - name: Render task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task.json
+          container-name: ${{ env.AWS_AI_CONTAINER }}
+          image: ${{ steps.login-ecr.outputs.registry }}/sybeez-school-ai:${{ github.sha }}
+
+      - name: Register task definition
+        id: register
+        run: |
+          set -euo pipefail
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            "${{ steps.render.outputs.task-definition }}" > task-register.json
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-register.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "task_definition_arn=$ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Run Alembic
+        run: |
+          set -euo pipefail
+          SUBNETS=$(printf '%s' "$AWS_AI_SUBNETS" | tr -d ' ')
+          PUBLIC_IP=$(printf '%s' "${AWS_AI_ASSIGN_PUBLIC_IP:-DISABLED}" | tr '[:lower:]' '[:upper:]')
+          OVERRIDES=$(jq -n --arg name "$AWS_AI_CONTAINER" \
+            '{containerOverrides:[{name:$name,command:["alembic","upgrade","head"]}]}')
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition "${{ steps.register.outputs.task_definition_arn }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$AWS_AI_SECURITY_GROUP],assignPublicIp=$PUBLIC_IP}" \
+            --overrides "$OVERRIDES" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN"
+          aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].{stoppedReason:stoppedReason,containers:containers[].{name:name,exitCode:exitCode,reason:reason}}' \
+            --output json
+          EXIT=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[?name=='$AWS_AI_CONTAINER'].exitCode | [0]" --output text)
+          if [ "$EXIT" != "0" ]; then
+            echo "Migration task failed (exit=$EXIT)"
+            exit 1
+          fi
+
+      - name: Update service and wait
+        run: |
+          set -euo pipefail
+          CURRENT=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].desiredCount' --output text)
+          if [ -z "$CURRENT" ] || [ "$CURRENT" = "None" ]; then
+            CURRENT=0
+          fi
+          DESIRED="$CURRENT"
+          if [ "$DESIRED" -lt 1 ]; then
+            DESIRED=1
+          fi
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.register.outputs.task_definition_arn }}" \
+            --desired-count "$DESIRED" \
+            --force-new-deployment
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"

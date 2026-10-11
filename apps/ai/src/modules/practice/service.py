@@ -5,7 +5,7 @@ from uuid import uuid4
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.practice.schemas import PracticeQuestion, PracticeRequest, PracticeResponse
-from src.providers.llm import get_llm
+from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
 
 
@@ -27,7 +27,7 @@ class PracticeService:
             f"Topic: {topic}\nDifficulty: {body.difficulty.value}\nCount: {body.count}\n\n"
             "Return JSON array of objects with keys: prompt, question_type, hint."
         )
-        raw = await self.llm.complete(system=system, user=user)
+        raw = await guarded_complete(self.llm, system=system, user=user)
         questions = self._parse(raw, body.count)
         return PracticeResponse(topic=topic or "General", difficulty=body.difficulty.value, questions=questions)
 

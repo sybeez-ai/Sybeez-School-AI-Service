@@ -4,7 +4,7 @@ import re
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.evaluation.schemas import EvaluationRequest, EvaluationResponse
-from src.providers.llm import get_llm
+from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
 
 
@@ -29,7 +29,7 @@ class EvaluationService:
             'Return JSON: {"correct": bool, "score": 0-1, "feedback": str, '
             '"concepts_demonstrated": [], "concepts_missing": []}'
         )
-        raw = await self.llm.complete(system=system, user=user)
+        raw = await guarded_complete(self.llm, system=system, user=user)
         parsed = self._parse(raw, body.answer)
         return parsed
 

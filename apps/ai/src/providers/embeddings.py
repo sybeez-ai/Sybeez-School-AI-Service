@@ -13,7 +13,8 @@ class ZeroEmbeddingProvider(EmbeddingProvider):
 class OpenAIEmbeddingProvider(EmbeddingProvider):
     async def embed(self, texts: list[str]) -> list[list[float]]:
         settings = get_settings()
-        async with httpx.AsyncClient(timeout=60) as client:
+        timeout = httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 f"{settings.openai_base_url}/embeddings",
                 headers={"Authorization": f"Bearer {settings.openai_api_key}"},

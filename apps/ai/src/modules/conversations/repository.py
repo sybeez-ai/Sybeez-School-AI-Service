@@ -42,10 +42,10 @@ class ConversationRepository:
         await self.db.flush()
         return msg
 
-    async def recent_messages(self, conversation_id: UUID, limit: int = 20) -> list[AIMessage]:
+    async def recent_messages(self, conversation_id: UUID, *, school_id: UUID, limit: int = 20) -> list[AIMessage]:
         result = await self.db.execute(
             select(AIMessage)
-            .where(AIMessage.conversation_id == conversation_id)
+            .where(AIMessage.conversation_id == conversation_id, AIMessage.school_id == school_id)
             .order_by(AIMessage.created_at.desc())
             .limit(limit)
         )
