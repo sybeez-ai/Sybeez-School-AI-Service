@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
         logger.exception("unhandled error")
         return JSONResponse(status_code=500, content=error_body("internal_error", "Internal server error"))
 
+    @app.get("/")
     @app.get("/health")
     async def health():
         return liveness()

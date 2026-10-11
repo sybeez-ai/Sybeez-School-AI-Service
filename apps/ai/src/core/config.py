@@ -211,13 +211,20 @@ def validate_production_settings(settings: Settings) -> None:
     if settings.app_env != "production":
         return
     problems: list[str] = []
-    if not settings.cognito_region:
+    jwt_ok = settings.jwt_algorithm == "HS256" and not secret_is_insecure(settings.jwt_secret)
+    # School session tokens are HS256. Cognito is optional unless a pool is partly configured.
+    if settings.cognito_region or settings.cognito_user_pool_id or settings.cognito_app_client_id:
+        if not settings.cognito_region:
+            problems.append("COGNITO_REGION")
+        if not settings.cognito_user_pool_id:
+            problems.append("COGNITO_USER_POOL_ID")
+        if not settings.cognito_app_client_id:
+            problems.append("COGNITO_APP_CLIENT_ID")
+    elif not jwt_ok:
         problems.append("COGNITO_REGION")
-    if not settings.cognito_user_pool_id:
         problems.append("COGNITO_USER_POOL_ID")
-    if not settings.cognito_app_client_id:
         problems.append("COGNITO_APP_CLIENT_ID")
-    if settings.jwt_algorithm != "HS256" or secret_is_insecure(settings.jwt_secret):
+    if not jwt_ok:
         problems.append("JWT_SECRET")
     if "sybeez:sybeez@" in settings.database_url or not settings.database_url.strip():
         problems.append("DATABASE_URL")

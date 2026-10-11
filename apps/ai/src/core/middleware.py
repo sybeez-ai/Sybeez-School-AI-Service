@@ -11,7 +11,7 @@ from src.core.security import AuthContext, authenticate_token
 
 logger = logging.getLogger("sybeez.ai.access")
 
-_HEALTH_PATHS = {"/health", "/ready", "/api/v1/ai/health", "/api/v1/ai/ready"}
+_HEALTH_PATHS = {"/", "/health", "/ready", "/api/v1/ai/health", "/api/v1/ai/ready"}
 _BODY_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 

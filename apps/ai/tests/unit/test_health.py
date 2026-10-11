@@ -8,6 +8,9 @@ def test_health():
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+    root = client.get("/")
+    assert root.status_code == 200
+    assert root.json()["status"] == "ok"
     prefixed = client.get("/api/v1/ai/health")
     assert prefixed.status_code == 200
     assert prefixed.json()["status"] == "ok"

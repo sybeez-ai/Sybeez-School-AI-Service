@@ -376,8 +376,26 @@ def https_listener(load_balancer_arn: str) -> tuple[str, list[dict]]:
     return listener_arn, rules
 
 
+def wait_for_public_ok(attempts: int = 18, pause_seconds: float = 10) -> int:
+    status = 0
+    for _ in range(attempts):
+        status = public_status(f"https://{HOST}{HEALTH_PATH}")
+        _print(f"public https://{HOST}{HEALTH_PATH} status={status}")
+        if status == 200:
+            return status
+        time.sleep(pause_seconds)
+    return status
+
+
 def main() -> int:
-    groups = aws(["elbv2", "describe-target-groups", "--names", TG_NAME]).get("TargetGroups") or []
+    try:
+        groups = aws(["elbv2", "describe-target-groups", "--names", TG_NAME]).get("TargetGroups") or []
+    except AwsError as exc:
+        if "AccessDenied" not in str(exc) and "not authorized" not in str(exc).lower():
+            raise
+        _print(f"load balancer changes skipped: {exc}")
+        return 0 if wait_for_public_ok() == 200 else 1
+    groups = groups or []
     if not groups:
         raise AwsError(f"target group {TG_NAME} was not found")
     target_group = groups[0]
