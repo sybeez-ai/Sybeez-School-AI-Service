@@ -155,7 +155,7 @@ jobs:
               17) echo "Migration failed: server rejected the connection" ;;
               18) echo "Migration failed: database operational error" ;;
               20) echo "Migration failed: database name" ;;
-              *) echo "Migration failed: unclassified (exit=$EXIT)" ;;
+              *) echo "Migration failed: exit=$EXIT" ;;
             esac
             exit 1
           fi

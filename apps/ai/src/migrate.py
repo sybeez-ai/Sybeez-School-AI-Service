@@ -4,32 +4,74 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import urllib.request
 
 from src.core.logging import redact
 
+# Exit code 100 + index. The deploy log prints the number; this list decodes it.
+FAILURE_TYPES = (
+    "ConnectionFailureError",
+    "PostgresConnectionError",
+    "ClientCannotConnectError",
+    "CannotConnectNowError",
+    "ConnectionRejectionError",
+    "AdminShutdownError",
+    "TooManyConnectionsError",
+    "InvalidPasswordError",
+    "InvalidCatalogNameError",
+    "InvalidAuthorizationSpecificationError",
+    "InsufficientPrivilegeError",
+    "UndefinedTableError",
+    "UndefinedObjectError",
+    "DuplicateTableError",
+    "DuplicateObjectError",
+    "UniqueViolationError",
+    "PostgresSyntaxError",
+    "FeatureNotSupportedError",
+    "DependentObjectsStillExistError",
+    "ObjectInUseError",
+    "ReadOnlySQLTransactionError",
+    "DiskFullError",
+    "OutOfMemoryError",
+    "InternalClientError",
+    "ProtocolViolationError",
+    "ProgrammingError",
+    "OperationalError",
+    "InterfaceError",
+    "IntegrityError",
+    "ArgumentError",
+    "CommandError",
+    "InvalidRequestError",
+    "StatementError",
+    "DBAPIError",
+    "RuntimeError",
+    "TypeError",
+    "ValueError",
+    "OSError",
+    "ModuleNotFoundError",
+    "FileNotFoundError",
+)
+
 
 def failure_exit_code(output: str) -> int:
     """Map a migration failure onto an exit code the deploy log can show."""
-    if "InvalidPasswordError" in output or "password authentication failed" in output:
-        return 10
-    if "InvalidCatalogNameError" in output:
-        return 20
-    if "InvalidAuthorizationSpecificationError" in output or "no pg_hba.conf" in output:
-        return 17
-    if "certificate verify failed" in output or "SSL" in output:
-        return 12
-    if "Connect call failed" in output or "ConnectionRefused" in output or "TimeoutError" in output:
-        return 11
-    if "ProgrammingError" in output or "InsufficientPrivilege" in output or "UndefinedTable" in output:
-        return 13
-    if "Could not configure the database URL" in output or "interpolation" in output:
+    if "Could not configure the database URL" in output:
         return 14
-    if "ModuleNotFoundError" in output or "FileNotFoundError" in output:
-        return 15
-    if "OperationalError" in output:
-        return 18
+    if "certificate verify failed" in output:
+        return 12
+    match = re.search(r"Database migration failed \(([A-Za-z0-9_]+)\)", output)
+    name = match.group(1) if match else ""
+    if name not in FAILURE_TYPES:
+        for candidate in FAILURE_TYPES:
+            if candidate in output:
+                name = candidate
+                break
+        else:
+            name = ""
+    if name in FAILURE_TYPES:
+        return 100 + FAILURE_TYPES.index(name)
     return 19
 
 
