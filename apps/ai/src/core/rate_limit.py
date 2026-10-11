@@ -22,16 +22,16 @@ class RateLimiter:
     def reset(self) -> None:
         self._hits.clear()
 
-    async def allow(self, key: str) -> bool:
+    async def allow(self, key: str, *, limit: int | None = None) -> bool:
         settings = get_settings()
-        limit = settings.rate_limit_per_minute
+        cap = settings.rate_limit_per_minute if limit is None else limit
         window = settings.rate_limit_window_seconds
         if settings.rate_limit_backend.lower() == "redis":
             try:
-                return await self._redis_allow(key, limit, window)
+                return await self._redis_allow(key, cap, window)
             except Exception:
                 logger.warning("redis rate limit unavailable; using in-process limiter")
-        return await self._memory_allow(key, limit, window)
+        return await self._memory_allow(key, cap, window)
 
     async def _memory_allow(self, key: str, limit: int, window: int) -> bool:
         now = time.monotonic()
