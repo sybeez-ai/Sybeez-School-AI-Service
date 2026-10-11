@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 
@@ -71,6 +72,29 @@ def main() -> int:
             command = container.get("command") or []
             if command:
                 print("container command=" + " ".join(str(part) for part in command)[:300])
+
+    task_ids = []
+    for event in service.get("events") or []:
+        for task_id in re.findall(r"\b[0-9a-f]{32}\b", str(event.get("message") or "")):
+            if task_id not in task_ids:
+                task_ids.append(task_id)
+    if task_ids:
+        arns = [f"arn:aws:ecs:{REGION}:213433448375:task/{CLUSTER}/{task_id}" for task_id in task_ids[:6]]
+        described_tasks = aws(["ecs", "describe-tasks", "--cluster", CLUSTER, "--tasks", *arns])
+        failures = described_tasks.get("failures") or []
+        for failure in failures:
+            print(f"task lookup {failure.get('arn', '').rsplit('/', 1)[-1]} reason={failure.get('reason')}")
+        for task in described_tasks.get("tasks") or []:
+            task_id = str(task.get("taskArn") or "").rsplit("/", 1)[-1]
+            print(
+                f"task {task_id} status={task.get('lastStatus')} health={task.get('healthStatus')} "
+                f"stopped={task.get('stoppedReason')}"
+            )
+            for container in task.get("containers") or []:
+                print(
+                    f"task {task_id} container={container.get('name')} exit={container.get('exitCode')} "
+                    f"reason={container.get('reason')}"
+                )
 
     for desired in ("RUNNING", "STOPPED"):
         listed = aws(["ecs", "list-tasks", "--cluster", CLUSTER, "--service-name", SERVICE, "--desired-status", desired])
