@@ -141,6 +141,8 @@ jobs:
             --output json
           EXIT=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" \
             --query "tasks[0].containers[?name=='$AWS_AI_CONTAINER'].exitCode | [0]" --output text)
+          TASK_ARN="$TASK_ARN" TASK_DEF_ARN="${{ steps.register.outputs.task_definition_arn }}" \
+            python3 .github/scripts/redacted_migration_logs.py || true
           if [ "$EXIT" != "0" ]; then
             echo "Migration task failed (exit=$EXIT)"
             exit 1

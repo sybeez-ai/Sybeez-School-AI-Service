@@ -37,6 +37,8 @@ RUN pip install --no-cache-dir --upgrade pip \
         "python-multipart>=0.0.17" \
         "boto3>=1.35.0" \
         "redis>=5.2.0" \
+        "langgraph>=0.4.0" \
+        "websockets>=13" \
     && chown -R app:app /app
 
 USER app

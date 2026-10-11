@@ -155,8 +155,10 @@ class RdsIamTokenProvider:
 
 
 def raise_redacted(exc: BaseException, logger: logging.Logger, message: str) -> None:
-    """Log the failure type and raise a new error with no chained cause."""
-    logger.error("%s (%s)", message, type(exc).__name__)
+    """Log a redacted failure and raise a new error with no chained cause."""
+    from src.core.logging import redact
+
+    logger.error("%s (%s): %s", message, type(exc).__name__, redact(exc))
     raise RuntimeError(message) from None
 
 

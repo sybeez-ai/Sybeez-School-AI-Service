@@ -279,6 +279,7 @@ def test_raise_redacted_drops_the_cause(caplog):
     assert exc.value.__cause__ is None
     assert "s3cret" not in caplog.text
     assert "db.internal" not in caplog.text
+    assert "[redacted-url]" in caplog.text
 
 
 async def test_role_check_does_not_chain_the_url(monkeypatch):
