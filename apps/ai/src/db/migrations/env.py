@@ -23,6 +23,8 @@ install_redaction()
 logger = logging.getLogger("alembic.env")
 target_metadata = Base.metadata
 settings = get_settings()
+# The school backend shares this database and owns alembic_version.
+VERSION_TABLE = "alembic_version_ai"
 
 
 def _migration_connect() -> tuple[str, dict, object]:
@@ -41,13 +43,24 @@ set_alembic_sqlalchemy_url(config, _migration_url)
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True, compare_type=True)
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        compare_type=True,
+        version_table=VERSION_TABLE,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        version_table=VERSION_TABLE,
+    )
     with context.begin_transaction():
         context.run_migrations()
 

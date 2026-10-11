@@ -17,7 +17,7 @@ Deploy steps, in order:
 1. Assume `AWS_AI_ROLE_ARN` in `ap-south-1`.
 2. Build `infra/docker/ai.Dockerfile` and push it to ECR repository `sybeez-school-ai`, tagged with the git SHA and `latest`.
 3. Register a new revision of task definition `sybeez-school-ai` that uses the SHA image.
-4. Run that revision once with command `alembic upgrade head`. Subnets, security group, and public IP come from the variables above. The deploy stops if the task exits non-zero.
+4. Run that revision once with `python -m src.migrate`, which runs `alembic upgrade head`. Subnets, security group, and public IP come from the variables above. The deploy stops if the task exits non-zero. Alembic records its revision in `alembic_version_ai` so it does not follow the school backend's `alembic_version` table.
 5. Update ECS service `sybeez-school-ai` on cluster `sybeez-school-cluster` to that revision. A missing or non-numeric desired count is treated as 0, and any count below 1 is raised to 1. The workflow logs that count, then waits until the service is stable.
 
 The task role still needs `secretsmanager:GetSecretValue` when the service loads `AWS_SECRETS_MANAGER_SECRET_ID`. The workflow does not read secret values. `JWT_SECRET` in that secret must be the same value the School backend uses to sign session tokens.

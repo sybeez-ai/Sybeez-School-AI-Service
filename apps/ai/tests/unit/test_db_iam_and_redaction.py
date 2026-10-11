@@ -298,6 +298,12 @@ def test_formatter_and_logs_redact_exceptions(capsys):
         root.setLevel(previous_level)
 
 
+def test_alembic_version_table_is_separate_from_the_backend():
+    source = open("src/db/migrations/env.py", encoding="utf-8").read()
+    assert 'VERSION_TABLE = "alembic_version_ai"' in source
+    assert source.count("version_table=VERSION_TABLE") == 2
+
+
 def test_failure_reason_redacts_the_database_url():
     from src.migrate import failure_reason
 
