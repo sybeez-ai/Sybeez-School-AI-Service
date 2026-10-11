@@ -10,6 +10,29 @@ import urllib.request
 from src.core.logging import redact
 
 
+def failure_exit_code(output: str) -> int:
+    """Map a migration failure onto an exit code the deploy log can show."""
+    if "InvalidPasswordError" in output or "password authentication failed" in output:
+        return 10
+    if "InvalidCatalogNameError" in output:
+        return 20
+    if "InvalidAuthorizationSpecificationError" in output or "no pg_hba.conf" in output:
+        return 17
+    if "certificate verify failed" in output or "SSL" in output:
+        return 12
+    if "Connect call failed" in output or "ConnectionRefused" in output or "TimeoutError" in output:
+        return 11
+    if "ProgrammingError" in output or "InsufficientPrivilege" in output or "UndefinedTable" in output:
+        return 13
+    if "Could not configure the database URL" in output or "interpolation" in output:
+        return 14
+    if "ModuleNotFoundError" in output or "FileNotFoundError" in output:
+        return 15
+    if "OperationalError" in output:
+        return 18
+    return 19
+
+
 def failure_reason(output: str) -> str:
     detail = redact(output)
     lines = [line.strip() for line in detail.splitlines() if line.strip()]
@@ -52,13 +75,18 @@ def publish_reason(reason: str) -> None:
 
 
 def main() -> int:
-    proc = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
+    try:
+        proc = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
+    except Exception as exc:
+        print(type(exc).__name__)
+        return 15
     if proc.returncode == 0:
         return 0
-    reason = failure_reason(f"{proc.stderr or ''}\n{proc.stdout or ''}")
+    output = f"{proc.stderr or ''}\n{proc.stdout or ''}"
+    reason = failure_reason(output)
     print(reason)
     publish_reason(reason)
-    return proc.returncode
+    return failure_exit_code(output)
 
 
 if __name__ == "__main__":

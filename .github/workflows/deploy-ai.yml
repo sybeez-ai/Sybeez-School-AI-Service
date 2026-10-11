@@ -145,7 +145,18 @@ jobs:
           TASK_ARN="$TASK_ARN" TASK_DEF_ARN="${{ steps.register.outputs.task_definition_arn }}" \
             python3 .github/scripts/redacted_migration_logs.py || true
           if [ "$EXIT" != "0" ]; then
-            echo "Migration task failed (exit=$EXIT)"
+            case "$EXIT" in
+              10) echo "Migration failed: database authentication" ;;
+              11) echo "Migration failed: database connection" ;;
+              12) echo "Migration failed: TLS" ;;
+              13) echo "Migration failed: SQL" ;;
+              14) echo "Migration failed: database URL configuration" ;;
+              15) echo "Migration failed: missing runtime file or module" ;;
+              17) echo "Migration failed: server rejected the connection" ;;
+              18) echo "Migration failed: database operational error" ;;
+              20) echo "Migration failed: database name" ;;
+              *) echo "Migration failed: unclassified (exit=$EXIT)" ;;
+            esac
             exit 1
           fi
 

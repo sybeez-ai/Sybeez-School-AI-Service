@@ -310,6 +310,10 @@ def test_failure_reason_redacts_the_database_url():
     assert "db.internal" not in reason
     assert "Database migration failed" in reason
     assert len(reason) <= 255
+    from src.migrate import failure_exit_code
+
+    assert failure_exit_code("InvalidPasswordError: password authentication failed") == 10
+    assert failure_exit_code("Could not configure the database URL") == 14
 
 
 def test_raise_redacted_drops_the_cause(caplog):
