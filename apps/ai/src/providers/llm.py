@@ -30,34 +30,49 @@ class EchoLLM(LLMProvider):
 
 
 class CompatibleChatLLM(LLMProvider):
-    """OpenAI-compatible chat API (DeepSeek, Qwen, OpenAI)."""
+    """OpenAI-compatible chat API (DeepSeek, Qwen, OpenAI) with provider failover."""
 
     def __init__(self) -> None:
         self.settings = get_settings()
-        self.api_key = self.settings.active_chat_api_key
-        self.base_url = self.settings.active_chat_base_url.rstrip("/")
-        self.model = self.settings.active_chat_model
+        self.candidates = self.settings.chat_candidates() or [
+            (self.settings.chat_provider, self.settings.active_chat_api_key,
+             self.settings.active_chat_base_url, self.settings.active_chat_model)
+        ]
+        _, self.api_key, base_url, self.model = self.candidates[0]
+        self.base_url = base_url.rstrip("/")
 
     def _timeout(self) -> httpx.Timeout:
         settings = self.settings
         return httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)
 
-    async def complete(self, *, system: str, user: str) -> str:
-        try:
-            return await self._complete(system=system, user=user)
-        except httpx.HTTPError as exc:
-            # Network/DNS/HTTP failures are an upstream outage (502), not a 500 crash.
-            status = getattr(getattr(exc, "response", None), "status_code", None)
-            logger.warning("llm complete failed: %s status=%s provider=%s", type(exc).__name__, status, self.settings.chat_provider)
-            raise UpstreamError("Language model request failed") from exc
+    @staticmethod
+    def _log_failure(kind: str, provider: str, exc: httpx.HTTPError) -> None:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        logger.warning("llm %s failed: %s status=%s provider=%s", kind, type(exc).__name__, status, provider)
 
-    async def _complete(self, *, system: str, user: str) -> str:
+    def _targets(self):
+        if self.candidates and self.candidates[0][2].rstrip("/") == self.base_url:
+            return [(p, k, u.rstrip("/"), m) for p, k, u, m in self.candidates]
+        return [("custom", self.api_key, self.base_url, self.model)]
+
+    async def complete(self, *, system: str, user: str) -> str:
+        last: httpx.HTTPError | None = None
+        for provider, key, url, model in self._targets():
+            try:
+                return await self._complete(key, url, model, system=system, user=user)
+            except httpx.HTTPError as exc:
+                # Network/DNS/auth/5xx: try the next provider; all failing is a 502, not a 500.
+                self._log_failure("complete", provider, exc)
+                last = exc
+        raise UpstreamError("Language model request failed") from last
+
+    async def _complete(self, key: str, url: str, model: str, *, system: str, user: str) -> str:
         async with httpx.AsyncClient(timeout=self._timeout()) as client:
             resp = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                f"{url}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
                 json={
-                    "model": self.model,
+                    "model": model,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},
@@ -70,23 +85,30 @@ class CompatibleChatLLM(LLMProvider):
             return data["choices"][0]["message"]["content"]
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
-        try:
-            async for delta in self._stream(system=system, user=user):
-                yield delta
-        except httpx.HTTPError as exc:
-            status = getattr(getattr(exc, "response", None), "status_code", None)
-            logger.warning("llm stream failed: %s status=%s provider=%s", type(exc).__name__, status, self.settings.chat_provider)
-            raise UpstreamError("Language model request failed") from exc
+        last: httpx.HTTPError | None = None
+        for provider, key, url, model in self._targets():
+            started = False
+            try:
+                async for delta in self._stream(key, url, model, system=system, user=user):
+                    started = True
+                    yield delta
+                return
+            except httpx.HTTPError as exc:
+                self._log_failure("stream", provider, exc)
+                last = exc
+                if started:
+                    break
+        raise UpstreamError("Language model request failed") from last
 
-    async def _stream(self, *, system: str, user: str) -> AsyncIterator[str]:
+    async def _stream(self, key: str, url: str, model: str, *, system: str, user: str) -> AsyncIterator[str]:
         timeout = httpx.Timeout(self.settings.stream_timeout_seconds, connect=self.settings.upstream_timeout_seconds)
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                f"{url}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
                 json={
-                    "model": self.model,
+                    "model": model,
                     "stream": True,
                     "messages": [
                         {"role": "system", "content": system},

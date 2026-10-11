@@ -180,6 +180,21 @@ class Settings(BaseSettings):
                 return provider
         return self.llm_provider.lower()
 
+    def _chat_target(self, provider: str) -> tuple[str, str, str, str]:
+        url = {"deepseek": self.deepseek_base_url, "qwen": self.qwen_base_url}.get(provider, self.openai_base_url)
+        model = {"deepseek": self.deepseek_chat_model, "qwen": self.qwen_chat_model}.get(provider, self.llm_model)
+        return provider, self._chat_key(provider), url, model
+
+    def chat_candidates(self) -> list[tuple[str, str, str, str]]:
+        """(provider, key, base_url, model) to try in order: active provider, then any
+        other keyed provider (fallback first) so one bad key does not take lessons down."""
+        order = [self.chat_provider, self.ai_fallback_provider.lower(), "deepseek", "qwen", "openai"]
+        seen: list[str] = []
+        for provider in order:
+            if provider and provider not in seen and self._chat_key(provider):
+                seen.append(provider)
+        return [self._chat_target(p) for p in seen]
+
     @property
     def active_chat_api_key(self) -> str:
         return self._chat_key(self.chat_provider) or self.sarvam_api_key

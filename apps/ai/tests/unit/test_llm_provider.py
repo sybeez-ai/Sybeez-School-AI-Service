@@ -23,6 +23,7 @@ async def test_unreachable_provider_raises_upstream_error(monkeypatch):
     provider.api_key = "test"
     provider.base_url = "https://unreachable.invalid"
     provider.model = "m"
+    provider.candidates = []
 
     async def boom(*_args, **_kwargs):
         raise httpx.ConnectError("Name or service not known")
@@ -61,3 +62,24 @@ def test_missing_preferred_key_uses_fallback_provider_consistently(monkeypatch):
     assert s.active_chat_api_key == "d-key"
     assert s.active_chat_base_url == s.deepseek_base_url
     assert s.active_chat_model == s.deepseek_chat_model
+
+
+@pytest.mark.asyncio
+async def test_bad_primary_key_fails_over_to_fallback_provider(monkeypatch):
+    _clean_env(monkeypatch)
+    monkeypatch.setenv("LLM_PROVIDER", "qwen")
+    monkeypatch.setenv("QWEN_API_KEY", "bad")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "good")
+    monkeypatch.setattr(llm_module, "get_settings", lambda: Settings(_env_file=None))
+    calls = []
+
+    async def fake_post(self, url, headers=None, json=None):
+        calls.append(url)
+        req = httpx.Request("POST", url)
+        if "aliyuncs" in url:
+            return httpx.Response(401, request=req)
+        return httpx.Response(200, request=req, json={"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    assert await llm_module.CompatibleChatLLM().complete(system="s", user="u") == "ok"
+    assert len(calls) == 2 and "deepseek" in calls[1]
