@@ -22,4 +22,4 @@ Deploy steps, in order:
 
 The task role still needs `secretsmanager:GetSecretValue` when the service loads `AWS_SECRETS_MANAGER_SECRET_ID`. The workflow does not read secret values. `JWT_SECRET` in that secret must be the same value the School backend uses to sign session tokens.
 
-Set `DB_IAM_AUTH=true` so the service and Alembic connect as `sybeez_app` with an RDS IAM auth token instead of the master password. `DATABASE_URL` must use that username and the RDS endpoint hostname. The task role needs `rds-db:connect` on that database user. TLS is required. Set `DB_SSL_CA` to an RDS CA bundle path when the task should verify the server certificate.
+Set `DB_IAM_AUTH=true` so the service and Alembic connect as `sybeez_app` with an RDS IAM auth token instead of the master password. `DATABASE_URL` must use that username and the RDS endpoint hostname. The task role needs `rds-db:connect` on that database user. TLS is required in production, and a `sslmode=require` query is translated into that TLS context for asyncpg. Set `DB_SSL_CA` to an RDS CA bundle path when the task should verify the server certificate.

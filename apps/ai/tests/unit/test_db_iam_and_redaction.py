@@ -7,11 +7,14 @@ from alembic.config import Config
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
+from sqlalchemy.engine.url import make_url
 
 from src.core.config import Settings
 from src.core.database import assert_database_role_enforces_rls, build_async_engine
 from src.core.db_iam import (
     RdsIamTokenProvider,
+    asyncpg_safe_url,
+    database_connect,
     database_endpoint,
     iam_do_connect,
     raise_redacted,
@@ -182,6 +185,34 @@ def test_region_is_required(monkeypatch):
     with pytest.raises(RuntimeError) as exc:
         resolve_region("")
     assert "AWS_REGION" in str(exc.value)
+
+
+def test_sslmode_becomes_an_asyncpg_tls_context():
+    raw = "postgresql+asyncpg://sybeez_app:p%40ss@db.internal:5432/sybeez?sslmode=require"
+    safe = asyncpg_safe_url(raw)
+    assert "sslmode" not in safe
+    assert make_url(safe).password == "p@ss"
+    safe, connect_args, listener = database_connect(
+        raw,
+        iam=False,
+        app_env="production",
+        aws_region="",
+        ssl_ca="",
+    )
+    assert "sslmode" not in safe
+    assert make_url(safe).password == "p@ss"
+    assert isinstance(connect_args["ssl"], ssl.SSLContext)
+    assert listener is None
+    unchanged, empty, no_listener = database_connect(
+        "postgresql+asyncpg://sybeez:sybeez@localhost:5432/sybeez_school",
+        iam=False,
+        app_env="test",
+        aws_region="",
+        ssl_ca="",
+    )
+    assert unchanged == "postgresql+asyncpg://sybeez:sybeez@localhost:5432/sybeez_school"
+    assert empty == {}
+    assert no_listener is None
 
 
 def test_engine_without_iam_keeps_the_password():

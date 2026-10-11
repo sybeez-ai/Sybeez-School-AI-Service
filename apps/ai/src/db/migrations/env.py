@@ -8,7 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import get_settings
-from src.core.db_iam import iam_engine_options, raise_redacted, set_alembic_sqlalchemy_url, strip_password
+from src.core.db_iam import database_connect, raise_redacted, set_alembic_sqlalchemy_url
 from src.core.logging import install_redaction
 from src.db import models  # noqa: F401
 from src.db.base import Base
@@ -25,13 +25,18 @@ target_metadata = Base.metadata
 settings = get_settings()
 
 
-def _alembic_url() -> str:
-    if settings.db_iam_auth:
-        return strip_password(settings.database_url)
-    return settings.database_url
+def _migration_connect() -> tuple[str, dict, object]:
+    return database_connect(
+        settings.database_url,
+        iam=settings.db_iam_auth,
+        app_env=settings.app_env,
+        aws_region=settings.aws_region,
+        ssl_ca=settings.db_ssl_ca,
+    )
 
 
-set_alembic_sqlalchemy_url(config, _alembic_url())
+_migration_url, _migration_connect_args, _migration_listener = _migration_connect()
+set_alembic_sqlalchemy_url(config, _migration_url)
 
 
 def run_migrations_offline() -> None:
@@ -52,15 +57,8 @@ def _migration_failure(exc: BaseException) -> None:
 
 
 async def run_async_migrations() -> None:
-    connect_args: dict = {}
-    listener = None
-    if settings.db_iam_auth:
-        _url, iam_args, listener = iam_engine_options(
-            settings.database_url,
-            aws_region=settings.aws_region,
-            ssl_ca=settings.db_ssl_ca,
-        )
-        connect_args.update(iam_args)
+    connect_args = dict(_migration_connect_args)
+    listener = _migration_listener
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

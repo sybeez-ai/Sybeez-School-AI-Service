@@ -100,6 +100,7 @@ jobs:
         run: |
           set -euo pipefail
           aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task.json
+          python3 .github/scripts/describe_db_config.py task.json
 
       - name: Render task definition
         id: render

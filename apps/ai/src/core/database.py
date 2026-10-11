@@ -5,7 +5,7 @@ from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.config import Settings, get_settings
-from src.core.db_iam import iam_engine_options
+from src.core.db_iam import database_connect
 
 logger = logging.getLogger("sybeez.ai.database")
 
@@ -13,7 +13,6 @@ settings = get_settings()
 
 
 def build_async_engine(settings: Settings):
-    url = settings.database_url
     connect_args = {
         "timeout": settings.db_connect_timeout_seconds,
         "command_timeout": settings.db_statement_timeout_ms / 1000 + 5,
@@ -24,14 +23,15 @@ def build_async_engine(settings: Settings):
         },
     }
     recycle = 1800
-    listener = None
+    url, security_args, listener = database_connect(
+        settings.database_url,
+        iam=settings.db_iam_auth,
+        app_env=settings.app_env,
+        aws_region=settings.aws_region,
+        ssl_ca=settings.db_ssl_ca,
+    )
+    connect_args.update(security_args)
     if settings.db_iam_auth:
-        url, iam_args, listener = iam_engine_options(
-            settings.database_url,
-            aws_region=settings.aws_region,
-            ssl_ca=settings.db_ssl_ca,
-        )
-        connect_args.update(iam_args)
         recycle = 600
     engine = create_async_engine(
         url,
