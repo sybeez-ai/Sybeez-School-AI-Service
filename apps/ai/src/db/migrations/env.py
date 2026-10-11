@@ -8,7 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.core.config import get_settings
-from src.core.db_iam import database_connect, raise_redacted, set_alembic_sqlalchemy_url
+from src.core.db_iam import database_connect, set_alembic_sqlalchemy_url
 from src.core.logging import install_redaction
 from src.db import models  # noqa: F401
 from src.db.base import Base
@@ -66,7 +66,16 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 def _migration_failure(exc: BaseException) -> None:
-    raise_redacted(exc, logger, "Database migration failed")
+    from src.core.logging import redact
+
+    kind = type(exc).__name__
+    detail = exc
+    orig = getattr(exc, "orig", None)
+    if orig is not None:
+        kind = f"{kind}/{type(orig).__name__}"
+        detail = orig
+    logger.error("Database migration failed (%s): %s", kind, redact(detail))
+    raise RuntimeError("Database migration failed") from None
 
 
 async def run_async_migrations() -> None:

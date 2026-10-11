@@ -80,8 +80,22 @@ def failure_exit_code(output: str) -> int:
         return 14
     if "certificate verify failed" in output:
         return 12
-    match = re.search(r"Database migration failed \(([A-Za-z0-9_]+)\)", output)
-    name = match.group(1) if match else ""
+    match = re.search(r"Database migration failed \(([A-Za-z0-9_]+)(?:/([A-Za-z0-9_]+))?\)", output)
+    outer = match.group(1) if match else ""
+    inner = match.group(2) if match and match.group(2) else ""
+    if inner in FAILURE_TYPES:
+        return 100 + FAILURE_TYPES.index(inner)
+    lowered = output.lower()
+    for phrase, code in (
+        ("permission denied", 60),
+        ("must be owner", 65),
+        ("already exists", 61),
+        ("does not exist", 62),
+        ("syntax error", 63),
+    ):
+        if phrase in lowered:
+            return code
+    name = outer
     if name not in FAILURE_TYPES:
         for candidate in FAILURE_TYPES:
             if candidate in output:

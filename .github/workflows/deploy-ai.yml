@@ -152,6 +152,11 @@ jobs:
               13) echo "Migration failed: SQL" ;;
               14) echo "Migration failed: database URL configuration" ;;
               40) echo "Migration failed: database revision is not in this image" ;;
+              60) echo "Migration failed: database permission denied" ;;
+              61) echo "Migration failed: database object already exists" ;;
+              62) echo "Migration failed: database object does not exist" ;;
+              63) echo "Migration failed: SQL syntax" ;;
+              65) echo "Migration failed: database role is not the owner" ;;
               41) echo "Migration failed: multiple migration heads" ;;
               42) echo "Migration failed: version table has multiple heads" ;;
               43) echo "Migration failed: migration script path is missing" ;;
