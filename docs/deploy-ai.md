@@ -1,6 +1,6 @@
 # Deploy the AI service
 
-`.github/workflows/deploy-ai.yml` lints and tests every pull request. A push to `Production` or `release` builds the Fargate image, runs migrations, and updates the ECS service.
+`.github/workflows/deploy-ai.yml` lints and tests every pull request. A push to `Production` or `release` builds the Fargate image, runs migrations, and updates the ECS service. A commit message that contains `[skip deploy]` still runs the tests and the service inspector, and does not roll the ECS service.
 
 The workflow assumes an IAM role with GitHub OIDC in `ap-south-1`. Set these repository variables (Settings → Secrets and variables → Actions → Variables):
 
