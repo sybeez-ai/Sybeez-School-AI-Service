@@ -55,8 +55,27 @@ FAILURE_TYPES = (
 )
 
 
+_COMMAND_PHRASES = (
+    ("Can't locate revision", 40),
+    ("Multiple head revisions", 41),
+    ("more than one head", 42),
+    ("Path doesn't exist", 43),
+    ("script_location", 44),
+    ("not up to date", 45),
+    ("does not refer to ancestor", 46),
+    ("No starting revision", 47),
+    ("expected to be a sqlalchemy.engine.Connection", 48),
+    ("expected to match one row", 49),
+    ("Duplicate head", 50),
+    ("Range revision not allowed", 51),
+)
+
+
 def failure_exit_code(output: str) -> int:
     """Map a migration failure onto an exit code the deploy log can show."""
+    for phrase, code in _COMMAND_PHRASES:
+        if phrase in output:
+            return code
     if "Could not configure the database URL" in output:
         return 14
     if "certificate verify failed" in output:

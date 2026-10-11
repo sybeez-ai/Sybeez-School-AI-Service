@@ -315,6 +315,7 @@ def test_failure_reason_redacts_the_database_url():
     assert failure_exit_code("Database migration failed (InvalidPasswordError): no") == (
         100 + FAILURE_TYPES.index("InvalidPasswordError")
     )
+    assert failure_exit_code("Can't locate revision identified by '0001_ai'") == 40
     assert failure_exit_code("Could not configure the database URL") == 14
 
 

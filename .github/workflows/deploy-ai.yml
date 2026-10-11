@@ -151,6 +151,10 @@ jobs:
               12) echo "Migration failed: TLS" ;;
               13) echo "Migration failed: SQL" ;;
               14) echo "Migration failed: database URL configuration" ;;
+              40) echo "Migration failed: database revision is not in this image" ;;
+              41) echo "Migration failed: multiple migration heads" ;;
+              42) echo "Migration failed: version table has multiple heads" ;;
+              43) echo "Migration failed: migration script path is missing" ;;
               15) echo "Migration failed: missing runtime file or module" ;;
               17) echo "Migration failed: server rejected the connection" ;;
               18) echo "Migration failed: database operational error" ;;
