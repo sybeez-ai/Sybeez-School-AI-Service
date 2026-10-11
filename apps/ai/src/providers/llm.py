@@ -47,7 +47,8 @@ class CompatibleChatLLM(LLMProvider):
             return await self._complete(system=system, user=user)
         except httpx.HTTPError as exc:
             # Network/DNS/HTTP failures are an upstream outage (502), not a 500 crash.
-            logger.warning("llm complete failed: %s", type(exc).__name__)
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            logger.warning("llm complete failed: %s status=%s provider=%s", type(exc).__name__, status, self.settings.chat_provider)
             raise UpstreamError("Language model request failed") from exc
 
     async def _complete(self, *, system: str, user: str) -> str:
@@ -73,7 +74,8 @@ class CompatibleChatLLM(LLMProvider):
             async for delta in self._stream(system=system, user=user):
                 yield delta
         except httpx.HTTPError as exc:
-            logger.warning("llm stream failed: %s", type(exc).__name__)
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            logger.warning("llm stream failed: %s status=%s provider=%s", type(exc).__name__, status, self.settings.chat_provider)
             raise UpstreamError("Language model request failed") from exc
 
     async def _stream(self, *, system: str, user: str) -> AsyncIterator[str]:

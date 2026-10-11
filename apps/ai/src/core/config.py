@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.secrets import apply_secret_mapping, fetch_secrets_manager_json
@@ -67,14 +68,20 @@ class Settings(BaseSettings):
     core_internal_token: str = "dev-internal-service-token"
 
     llm_provider: str = "deepseek"
+    ai_fallback_provider: str = ""
     chat_stream_enabled: bool = True
     embedding_dim: int = 1536
 
     sarvam_api_key: str = ""
     sarvam_base_url: str = "https://api.sarvam.ai"
 
-    qwen_voice_api_key: str = ""
-    qwen_chat_api_key: str = ""
+    # Production stores one DashScope key as QWEN_API_KEY; accept it for chat and voice.
+    qwen_voice_api_key: str = Field(
+        default="", validation_alias=AliasChoices("QWEN_VOICE_API_KEY", "QWEN_API_KEY")
+    )
+    qwen_chat_api_key: str = Field(
+        default="", validation_alias=AliasChoices("QWEN_CHAT_API_KEY", "QWEN_API_KEY")
+    )
     qwen_base_url: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     qwen_chat_model: str = "qwen-plus"
     qwen_voice_model: str = "qwen-audio-turbo"
@@ -153,40 +160,43 @@ class Settings(BaseSettings):
     def has_sarvam(self) -> bool:
         return bool(self.sarvam_api_key)
 
+    def _chat_key(self, provider: str) -> str:
+        return {
+            "deepseek": self.deepseek_api_key,
+            "qwen": self.qwen_chat_api_key,
+            "openai": self.openai_api_key,
+        }.get(provider, "")
+
+    @property
+    def chat_provider(self) -> str:
+        """The provider that will actually serve chat: key, URL and model always agree.
+
+        Preferred LLM_PROVIDER first, then AI_FALLBACK_PROVIDER, then any configured key.
+        (Mixing them sent a DeepSeek key to DashScope and every lesson failed.)
+        """
+        order = [self.llm_provider.lower(), self.ai_fallback_provider.lower(), "deepseek", "qwen", "openai"]
+        for provider in order:
+            if provider and self._chat_key(provider):
+                return provider
+        return self.llm_provider.lower()
+
     @property
     def active_chat_api_key(self) -> str:
-        provider = self.llm_provider.lower()
-        if provider == "deepseek" and self.deepseek_api_key:
-            return self.deepseek_api_key
-        if provider == "qwen" and self.qwen_chat_api_key:
-            return self.qwen_chat_api_key
-        if provider == "openai" and self.openai_api_key:
-            return self.openai_api_key
-        return self.deepseek_api_key or self.qwen_chat_api_key or self.openai_api_key or self.sarvam_api_key
+        return self._chat_key(self.chat_provider) or self.sarvam_api_key
 
     @property
     def active_chat_base_url(self) -> str:
-        provider = self.llm_provider.lower()
-        if provider == "deepseek":
-            return self.deepseek_base_url
-        if provider == "qwen":
-            return self.qwen_base_url
-        if provider == "openai":
-            return self.openai_base_url
-        if self.deepseek_api_key:
-            return self.deepseek_base_url
-        if self.qwen_chat_api_key:
-            return self.qwen_base_url
-        return self.openai_base_url
+        return {
+            "deepseek": self.deepseek_base_url,
+            "qwen": self.qwen_base_url,
+        }.get(self.chat_provider, self.openai_base_url)
 
     @property
     def active_chat_model(self) -> str:
-        provider = self.llm_provider.lower()
-        if provider == "deepseek":
-            return self.deepseek_chat_model
-        if provider == "qwen":
-            return self.qwen_chat_model
-        return self.llm_model
+        return {
+            "deepseek": self.deepseek_chat_model,
+            "qwen": self.qwen_chat_model,
+        }.get(self.chat_provider, self.llm_model)
 
 
 _INSECURE_SECRETS = frozenset(
