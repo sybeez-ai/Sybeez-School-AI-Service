@@ -153,13 +153,14 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
             --query 'services[0].desiredCount' --output text)
-          if [ -z "$CURRENT" ] || [ "$CURRENT" = "None" ]; then
-            CURRENT=0
-          fi
+          case "$CURRENT" in
+            ''|*[!0-9]*) CURRENT=0 ;;
+          esac
           DESIRED="$CURRENT"
           if [ "$DESIRED" -lt 1 ]; then
             DESIRED=1
           fi
+          echo "Scaling $ECS_SERVICE to desired count $DESIRED"
           aws ecs update-service \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \

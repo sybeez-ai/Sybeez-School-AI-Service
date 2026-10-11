@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     db_connect_timeout_seconds: float = 5
     db_statement_timeout_ms: int = 15000
     db_idle_tx_timeout_ms: int = 15000
+    # When true, the URL user (sybeez_app in production) authenticates with an RDS IAM token.
+    db_iam_auth: bool = False
+    db_ssl_ca: str = ""
 
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_backend: str = "memory"

@@ -11,7 +11,7 @@ from src.core.config import get_settings, validate_production_settings
 from src.core.database import assert_database_role_enforces_rls, engine
 from src.core.exceptions import AppError, error_body
 from src.core.health import liveness, readiness
-from src.core.logging import setup_logging
+from src.core.logging import redact, setup_logging
 from src.core.middleware import SecurityMiddleware
 from src.version import APP_NAME, APP_VERSION
 
@@ -47,12 +47,12 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(AppError)
     async def app_error_handler(_: Request, exc: AppError):
-        return JSONResponse(status_code=exc.status_code, content=error_body(exc.code, exc.message))
+        return JSONResponse(status_code=exc.status_code, content=error_body(exc.code, redact(exc.message)))
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(_: Request, exc: RequestValidationError):
         details = [
-            {"loc": list(err.get("loc", [])), "msg": err.get("msg"), "type": err.get("type")}
+            {"loc": list(err.get("loc", [])), "msg": redact(err.get("msg")), "type": err.get("type")}
             for err in exc.errors()
         ]
         return JSONResponse(
@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def http_handler(_: Request, exc: HTTPException):
-        detail = exc.detail if isinstance(exc.detail, str) else "Request failed"
+        detail = redact(exc.detail) if isinstance(exc.detail, str) else "Request failed"
         return JSONResponse(status_code=exc.status_code, content=error_body("http_error", detail))
 
     @app.exception_handler(Exception)
