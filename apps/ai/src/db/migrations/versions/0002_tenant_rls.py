@@ -10,6 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 
 from src.db.rls import rls_downgrade_sql, rls_sql
+from src.db.sql_script import split_sql
 
 revision: str = "0002_rls"
 down_revision: Union[str, None] = "0001_ai"
@@ -18,8 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute(rls_sql())
+    for statement in split_sql(rls_sql()):
+        op.execute(statement)
 
 
 def downgrade() -> None:
-    op.execute(rls_downgrade_sql())
+    for statement in split_sql(rls_downgrade_sql()):
+        op.execute(statement)

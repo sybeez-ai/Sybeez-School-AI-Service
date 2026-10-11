@@ -4,20 +4,16 @@ from uuid import UUID
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.core.config import get_settings
+from src.core.config import Settings, get_settings
+from src.core.db_iam import database_connect
 
 logger = logging.getLogger("sybeez.ai.database")
 
 settings = get_settings()
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.sql_echo,
-    pool_pre_ping=True,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
-    pool_timeout=settings.db_pool_timeout_seconds,
-    pool_recycle=1800,
-    connect_args={
+
+
+def build_async_engine(settings: Settings):
+    connect_args = {
         "timeout": settings.db_connect_timeout_seconds,
         "command_timeout": settings.db_statement_timeout_ms / 1000 + 5,
         "server_settings": {
@@ -25,8 +21,34 @@ engine = create_async_engine(
             "idle_in_transaction_session_timeout": str(settings.db_idle_tx_timeout_ms),
             "application_name": "sybeez-ai",
         },
-    },
-)
+    }
+    recycle = 1800
+    url, security_args, listener = database_connect(
+        settings.database_url,
+        iam=settings.db_iam_auth,
+        app_env=settings.app_env,
+        aws_region=settings.aws_region,
+        ssl_ca=settings.db_ssl_ca,
+    )
+    connect_args.update(security_args)
+    if settings.db_iam_auth:
+        recycle = 600
+    engine = create_async_engine(
+        url,
+        echo=settings.sql_echo,
+        pool_pre_ping=True,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout_seconds,
+        pool_recycle=recycle,
+        connect_args=connect_args,
+    )
+    if listener is not None:
+        event.listen(engine.sync_engine, "do_connect", listener)
+    return engine
+
+
+engine = build_async_engine(settings)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # set_config(..., true) is SET LOCAL. SET LOCAL cannot take a bound parameter.
@@ -68,6 +90,6 @@ async def assert_database_role_enforces_rls() -> None:
             bypasses = result.scalar_one()
     except Exception as exc:
         logger.error("database role check failed: %s", type(exc).__name__)
-        raise RuntimeError("Database is not reachable; refusing to start") from exc
+        raise RuntimeError("Database is not reachable; refusing to start") from None
     if bypasses:
         raise RuntimeError("Database role is superuser or BYPASSRLS; RLS would not isolate tenants")

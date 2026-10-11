@@ -23,6 +23,14 @@ GET    /api/v1/ai/conversations/{id}
 POST   /api/v1/ai/practice
 POST   /api/v1/ai/evaluation
 GET    /api/v1/ai/learning/summary
+POST   /api/v1/ai/teacher/sessions
+GET    /api/v1/ai/teacher/sessions
+GET    /api/v1/ai/teacher/sessions/{id}
+POST   /api/v1/ai/teacher/sessions/{id}/messages
+POST   /api/v1/ai/teacher/sessions/{id}/stream
+POST   /api/v1/ai/teacher/sessions/{id}/resume
+GET    /api/v1/ai/teacher/protocol
+WS     /api/v1/ai/teacher/sessions/{id}/live
 ```
 
 ## Quick start

@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     db_connect_timeout_seconds: float = 5
     db_statement_timeout_ms: int = 15000
     db_idle_tx_timeout_ms: int = 15000
+    # When true, the URL user (sybeez_app in production) authenticates with an RDS IAM token.
+    db_iam_auth: bool = False
+    db_ssl_ca: str = ""
 
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_backend: str = "memory"
@@ -75,6 +78,18 @@ class Settings(BaseSettings):
     qwen_base_url: str = "https://dashscope-intl.alibaba.com/compatible-mode/v1"
     qwen_chat_model: str = "qwen-plus"
     qwen_voice_model: str = "qwen-audio-turbo"
+
+    # Gemini Live speaks narration when GEMINI_API_KEY is set. auto prefers it over Qwen.
+    gemini_api_key: str = ""
+    gemini_live_model: str = "gemini-2.5-flash-native-audio-preview-12-2025"
+    gemini_live_ws_url: str = (
+        "wss://generativelanguage.googleapis.com/ws/"
+        "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+    )
+    voice_provider: str = "auto"
+    teacher_schema_retries: int = 3
+    teacher_rate_limit_per_minute: int = 20
+    teacher_image_hosts: str = "upload.wikimedia.org,commons.wikimedia.org"
 
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -125,6 +140,14 @@ class Settings(BaseSettings):
     @property
     def has_qwen_voice(self) -> bool:
         return bool(self.qwen_voice_api_key)
+
+    @property
+    def has_gemini_live(self) -> bool:
+        return bool(self.gemini_api_key)
+
+    @property
+    def image_hosts(self) -> set[str]:
+        return {host.strip().lower() for host in self.teacher_image_hosts.split(",") if host.strip()}
 
     @property
     def has_sarvam(self) -> bool:
@@ -188,13 +211,20 @@ def validate_production_settings(settings: Settings) -> None:
     if settings.app_env != "production":
         return
     problems: list[str] = []
-    if not settings.cognito_region:
+    jwt_ok = settings.jwt_algorithm == "HS256" and not secret_is_insecure(settings.jwt_secret)
+    # School session tokens are HS256. Cognito is optional unless a pool is partly configured.
+    if settings.cognito_region or settings.cognito_user_pool_id or settings.cognito_app_client_id:
+        if not settings.cognito_region:
+            problems.append("COGNITO_REGION")
+        if not settings.cognito_user_pool_id:
+            problems.append("COGNITO_USER_POOL_ID")
+        if not settings.cognito_app_client_id:
+            problems.append("COGNITO_APP_CLIENT_ID")
+    elif not jwt_ok:
         problems.append("COGNITO_REGION")
-    if not settings.cognito_user_pool_id:
         problems.append("COGNITO_USER_POOL_ID")
-    if not settings.cognito_app_client_id:
         problems.append("COGNITO_APP_CLIENT_ID")
-    if settings.jwt_algorithm != "HS256" or secret_is_insecure(settings.jwt_secret):
+    if not jwt_ok:
         problems.append("JWT_SECRET")
     if "sybeez:sybeez@" in settings.database_url or not settings.database_url.strip():
         problems.append("DATABASE_URL")

@@ -11,7 +11,7 @@ from src.core.security import AuthContext, authenticate_token
 
 logger = logging.getLogger("sybeez.ai.access")
 
-_HEALTH_PATHS = {"/health", "/ready", "/api/v1/ai/health", "/api/v1/ai/ready"}
+_HEALTH_PATHS = {"/", "/health", "/ready", "/api/v1/ai/health", "/api/v1/ai/ready"}
 _BODY_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -21,6 +21,15 @@ class BodyTooLarge(Exception):
 
 def normalize_path(path: str) -> str:
     return path.rstrip("/") or "/"
+
+
+def request_timeout_for_path(path: str) -> float:
+    """Lesson playback and chat streams outlive a normal JSON request."""
+    settings = get_settings()
+    normalized = normalize_path(path)
+    if normalized == "/api/v1/ai/chat" or normalized.startswith("/api/v1/ai/teacher"):
+        return settings.stream_timeout_seconds
+    return settings.request_timeout_seconds
 
 
 def is_public_path(path: str, method: str) -> bool:
@@ -99,7 +108,9 @@ async def buffer_receive(receive, method: str, max_bytes: int, declared: int | N
     async def replay():
         if pending:
             return pending.pop(0)
-        return {"type": "http.request", "body": b"", "more_body": False}
+        # After the body, wait for the real disconnect. A fake request message
+        # here makes StreamingResponse poll forever.
+        return await receive()
 
     return replay
 
@@ -159,7 +170,7 @@ class SecurityMiddleware:
                 await send_json(send, status, payload, request_id, extra)
                 return
 
-            timeout = settings.stream_timeout_seconds if path == "/api/v1/ai/chat" else settings.request_timeout_seconds
+            timeout = request_timeout_for_path(path)
 
             async def run():
                 declared = _declared_length(scope)

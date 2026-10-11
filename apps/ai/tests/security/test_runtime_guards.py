@@ -150,6 +150,19 @@ def test_production_error_does_not_echo_password():
     assert "CORE_INTERNAL_TOKEN" in message
 
 
+def test_production_settings_accept_school_jwt_without_cognito():
+    settings = Settings(
+        app_env="production",
+        database_url="postgresql+asyncpg://ai_app:secret@db.internal/sybeez",
+        cognito_region="",
+        cognito_user_pool_id="",
+        cognito_app_client_id="",
+        jwt_secret="prod-jwt-secret-at-least-32-characters",
+        core_internal_token="prod-internal-token",
+    )
+    validate_production_settings(settings)
+
+
 def test_production_settings_accept_real_config():
     settings = Settings(
         app_env="production",

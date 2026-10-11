@@ -30,6 +30,13 @@ class SchoolContext(BaseModel):
     id: UUID
 
 
+class PersonRef(BaseModel):
+    """A parent or teacher linked to this student. user_id is their auth id."""
+
+    user_id: UUID
+    name: str | None = None
+
+
 class AuthorizedLearningContext(BaseModel):
     """Authorized context from Core API — never trust client for these fields."""
 
@@ -38,12 +45,17 @@ class AuthorizedLearningContext(BaseModel):
     subjects: list[SubjectRef] = Field(default_factory=list)
     current_learning: CurrentLearning | None = None
     homework: list[HomeworkRef] = Field(default_factory=list)
+    grade_band: str | None = None
+    guardians: list[PersonRef] = Field(default_factory=list)
+    teachers: list[PersonRef] = Field(default_factory=list)
 
     def as_prompt_block(self) -> str:
         lines = [
             f"School: {self.school.id}",
             f"Student: {self.student.id}",
         ]
+        if self.grade_band:
+            lines.append(f"Grade band: {self.grade_band}")
         if self.student.class_id:
             lines.append(f"Class: {self.student.class_id}")
         if self.subjects:

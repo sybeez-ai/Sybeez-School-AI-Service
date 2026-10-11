@@ -1,0 +1,24 @@
+name: Inspect AI service
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Inspect
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_AI_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: Describe tasks
+        run: python3 .github/scripts/inspect_ai_service.py

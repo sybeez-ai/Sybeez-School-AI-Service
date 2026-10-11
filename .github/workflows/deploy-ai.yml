@@ -52,11 +52,14 @@ jobs:
         run: ruff check src tests
       - name: Test
         run: pytest -q
+      - name: Edge reconcile checks
+        working-directory: .github/scripts
+        run: python3 test_reconcile_ai_edge.py
 
   deploy:
     name: Deploy
     needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/Production' || github.ref == 'refs/heads/release')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/Production' || github.ref == 'refs/heads/release') && !contains(github.event.head_commit.message, '[skip deploy]')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -100,6 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task.json
+          python3 .github/scripts/describe_db_config.py task.json
 
       - name: Render task definition
         id: render
@@ -126,7 +130,7 @@ jobs:
           SUBNETS=$(printf '%s' "$AWS_AI_SUBNETS" | tr -d ' ')
           PUBLIC_IP=$(printf '%s' "${AWS_AI_ASSIGN_PUBLIC_IP:-DISABLED}" | tr '[:lower:]' '[:upper:]')
           OVERRIDES=$(jq -n --arg name "$AWS_AI_CONTAINER" \
-            '{containerOverrides:[{name:$name,command:["alembic","upgrade","head"]}]}')
+            '{containerOverrides:[{name:$name,command:["python","-m","src.migrate"]}]}')
           TASK_ARN=$(aws ecs run-task \
             --cluster "$ECS_CLUSTER" \
             --task-definition "${{ steps.register.outputs.task_definition_arn }}" \
@@ -138,11 +142,33 @@ jobs:
           aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN"
           aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" \
             --query 'tasks[0].{stoppedReason:stoppedReason,containers:containers[].{name:name,exitCode:exitCode,reason:reason}}' \
-            --output json
+            --output json | python3 .github/scripts/redact_stream.py
           EXIT=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" \
             --query "tasks[0].containers[?name=='$AWS_AI_CONTAINER'].exitCode | [0]" --output text)
+          TASK_ARN="$TASK_ARN" TASK_DEF_ARN="${{ steps.register.outputs.task_definition_arn }}" \
+            python3 .github/scripts/redacted_migration_logs.py || true
           if [ "$EXIT" != "0" ]; then
-            echo "Migration task failed (exit=$EXIT)"
+            case "$EXIT" in
+              10) echo "Migration failed: database authentication" ;;
+              11) echo "Migration failed: database connection" ;;
+              12) echo "Migration failed: TLS" ;;
+              13) echo "Migration failed: SQL" ;;
+              14) echo "Migration failed: database URL configuration" ;;
+              40) echo "Migration failed: database revision is not in this image" ;;
+              60) echo "Migration failed: database permission denied" ;;
+              61) echo "Migration failed: database object already exists" ;;
+              62) echo "Migration failed: database object does not exist" ;;
+              63) echo "Migration failed: SQL syntax" ;;
+              65) echo "Migration failed: database role is not the owner" ;;
+              41) echo "Migration failed: multiple migration heads" ;;
+              42) echo "Migration failed: version table has multiple heads" ;;
+              43) echo "Migration failed: migration script path is missing" ;;
+              15) echo "Migration failed: missing runtime file or module" ;;
+              17) echo "Migration failed: server rejected the connection" ;;
+              18) echo "Migration failed: database operational error" ;;
+              20) echo "Migration failed: database name" ;;
+              *) echo "Migration failed: exit=$EXIT" ;;
+            esac
             exit 1
           fi
 
@@ -153,13 +179,14 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
             --query 'services[0].desiredCount' --output text)
-          if [ -z "$CURRENT" ] || [ "$CURRENT" = "None" ]; then
-            CURRENT=0
-          fi
+          case "$CURRENT" in
+            ''|*[!0-9]*) CURRENT=0 ;;
+          esac
           DESIRED="$CURRENT"
           if [ "$DESIRED" -lt 1 ]; then
             DESIRED=1
           fi
+          echo "Scaling $ECS_SERVICE to desired count $DESIRED"
           aws ecs update-service \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
@@ -167,3 +194,6 @@ jobs:
             --desired-count "$DESIRED" \
             --force-new-deployment
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Reconcile public edge
+        run: python3 .github/scripts/reconcile_ai_edge.py
