@@ -77,8 +77,8 @@ def summarize_task_definition(label: str, task_def: str) -> None:
         print(f"{label} image={image_tag(str(container.get('image') or ''))}")
         names = [str(item.get("name") or "") for item in container.get("environment") or []]
         print(f"{label} env={','.join(names)}")
-        for item in container.get("secrets") or []:
-            print(f"{label} secret {item.get('name')} from={item.get('valueFrom')}")
+        names = [str(item.get("name") or "") for item in container.get("secrets") or []]
+        print(f"{label} secrets={','.join(names)}")
 
 
 def probe_startup(service: dict, task_def: str) -> None:
