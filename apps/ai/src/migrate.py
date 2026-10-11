@@ -80,22 +80,32 @@ def failure_exit_code(output: str) -> int:
         return 14
     if "certificate verify failed" in output:
         return 12
-    match = re.search(r"Database migration failed \(([A-Za-z0-9_]+)(?:/([A-Za-z0-9_]+))?\)", output)
+    match = re.search(
+        r"Database migration failed \(([A-Za-z0-9_]+)(?:/([A-Za-z0-9_]+))?(?: sqlstate=[0-9A-Za-z]+)?\)",
+        output,
+    )
     outer = match.group(1) if match else ""
     inner = match.group(2) if match and match.group(2) else ""
-    if inner in FAILURE_TYPES:
+    generic = {"ProgrammingError", "OperationalError", "DBAPIError", "StatementError", "DatabaseError"}
+    if inner in FAILURE_TYPES and inner not in generic:
         return 100 + FAILURE_TYPES.index(inner)
     lowered = output.lower()
     for phrase, code in (
+        ("sqlstate=42501", 60),
         ("permission denied", 60),
         ("must be owner", 65),
+        ("sqlstate=42p07", 61),
+        ("sqlstate=42710", 61),
         ("already exists", 61),
+        ("sqlstate=42p01", 62),
+        ("sqlstate=42704", 62),
         ("does not exist", 62),
+        ("sqlstate=42601", 63),
         ("syntax error", 63),
     ):
         if phrase in lowered:
             return code
-    name = outer
+    name = inner or outer
     if name not in FAILURE_TYPES:
         for candidate in FAILURE_TYPES:
             if candidate in output:

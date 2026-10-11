@@ -65,16 +65,27 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+def _root_db_error(exc: BaseException) -> BaseException:
+    current: BaseException = exc
+    seen: set[int] = set()
+    while id(current) not in seen:
+        seen.add(id(current))
+        nxt = getattr(current, "orig", None)
+        if not isinstance(nxt, BaseException):
+            break
+        current = nxt
+    return current
+
+
 def _migration_failure(exc: BaseException) -> None:
     from src.core.logging import redact
 
-    kind = type(exc).__name__
-    detail = exc
-    orig = getattr(exc, "orig", None)
-    if orig is not None:
-        kind = f"{kind}/{type(orig).__name__}"
-        detail = orig
-    logger.error("Database migration failed (%s): %s", kind, redact(detail))
+    root = _root_db_error(exc)
+    kind = type(exc).__name__ if root is exc else f"{type(exc).__name__}/{type(root).__name__}"
+    sqlstate = getattr(root, "sqlstate", None)
+    if sqlstate:
+        kind = f"{kind} sqlstate={sqlstate}"
+    logger.error("Database migration failed (%s): %s", kind, redact(root))
     raise RuntimeError("Database migration failed") from None
 
 
