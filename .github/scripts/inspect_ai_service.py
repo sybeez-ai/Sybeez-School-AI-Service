@@ -31,6 +31,101 @@ def image_tag(image: str) -> str:
     return image.rsplit("/", 1)[-1] if image else ""
 
 
+STARTUP_PROBE = r"""
+import asyncio, sys
+from src.core.config import get_settings, secret_is_insecure
+code = 80
+settings = get_settings()
+if not settings.cognito_configured:
+    code += 1
+if settings.jwt_algorithm != "HS256" or secret_is_insecure(settings.jwt_secret):
+    code += 2
+if settings.core_internal_token == "dev-internal-service-token":
+    code += 4
+if "sybeez:sybeez@" in settings.database_url or not settings.database_url.strip():
+    code += 8
+
+async def role():
+    global code
+    from sqlalchemy import text
+    from src.core.database import engine
+    try:
+        async with engine.connect() as connection:
+            row = (await connection.execute(text(
+                "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
+            ))).one()
+    except Exception:
+        code += 16
+        return
+    if row[0]:
+        code += 32
+    elif row[1]:
+        code += 64
+
+asyncio.run(role())
+raise SystemExit(code)
+"""
+
+
+def probe_startup(service: dict) -> None:
+    network = ((service.get("networkConfiguration") or {}).get("awsvpcConfiguration") or {})
+    subnets = list(network.get("subnets") or [])
+    groups = list(network.get("securityGroups") or [])
+    task_def = str(service.get("taskDefinition") or "")
+    if not subnets or not groups or not task_def:
+        print("startup probe skipped: service network is incomplete")
+        return
+    overrides = json.dumps(
+        {"containerOverrides": [{"name": "ai", "command": ["python", "-c", STARTUP_PROBE]}]}
+    )
+    public_ip = str(network.get("assignPublicIp") or "DISABLED")
+    started = aws(
+        [
+            "ecs",
+            "run-task",
+            "--cluster",
+            CLUSTER,
+            "--task-definition",
+            task_def,
+            "--launch-type",
+            "FARGATE",
+            "--network-configuration",
+            (
+                "awsvpcConfiguration={subnets=["
+                + ",".join(subnets)
+                + "],securityGroups=["
+                + ",".join(groups)
+                + "],assignPublicIp="
+                + public_ip
+                + "}"
+            ),
+            "--overrides",
+            overrides,
+        ]
+    )
+    tasks = started.get("tasks") or []
+    if not tasks:
+        failures = started.get("failures") or []
+        reason = failures[0].get("reason") if failures else "no task"
+        print(f"startup probe was not started: {reason}")
+        return
+    task_arn = str(tasks[0].get("taskArn") or "")
+    print(f"startup probe task={task_arn.rsplit('/', 1)[-1]}")
+    subprocess.run(
+        ["aws", "ecs", "wait", "tasks-stopped", "--region", REGION, "--cluster", CLUSTER, "--tasks", task_arn],
+        check=False,
+    )
+    described = aws(["ecs", "describe-tasks", "--cluster", CLUSTER, "--tasks", task_arn])
+    for task in described.get("tasks") or []:
+        for container in task.get("containers") or []:
+            if container.get("name") == "ai":
+                print(f"startup probe exit={container.get('exitCode')} stopped={task.get('stoppedReason')}")
+                print(
+                    "startup probe bits: +1 no cognito, +2 jwt rejected, +4 default core token, "
+                    "+8 default database url, +16 database unreachable, +32 superuser, +64 bypassrls; base 80"
+                )
+
+
 def main() -> int:
     described = aws(["ecs", "describe-services", "--cluster", CLUSTER, "--services", SERVICE])
     services = described.get("services") or []
@@ -96,6 +191,7 @@ def main() -> int:
                     f"reason={container.get('reason')}"
                 )
 
+    probe_startup(service)
     for desired in ("RUNNING", "STOPPED"):
         listed = aws(["ecs", "list-tasks", "--cluster", CLUSTER, "--service-name", SERVICE, "--desired-status", desired])
         arns = (listed.get("taskArns") or [])[:8]
