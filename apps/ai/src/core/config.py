@@ -75,7 +75,7 @@ class Settings(BaseSettings):
 
     qwen_voice_api_key: str = ""
     qwen_chat_api_key: str = ""
-    qwen_base_url: str = "https://dashscope-intl.alibaba.com/compatible-mode/v1"
+    qwen_base_url: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     qwen_chat_model: str = "qwen-plus"
     qwen_voice_model: str = "qwen-audio-turbo"
 

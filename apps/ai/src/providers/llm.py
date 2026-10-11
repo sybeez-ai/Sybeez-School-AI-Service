@@ -43,6 +43,14 @@ class CompatibleChatLLM(LLMProvider):
         return httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)
 
     async def complete(self, *, system: str, user: str) -> str:
+        try:
+            return await self._complete(system=system, user=user)
+        except httpx.HTTPError as exc:
+            # Network/DNS/HTTP failures are an upstream outage (502), not a 500 crash.
+            logger.warning("llm complete failed: %s", type(exc).__name__)
+            raise UpstreamError("Language model request failed") from exc
+
+    async def _complete(self, *, system: str, user: str) -> str:
         async with httpx.AsyncClient(timeout=self._timeout()) as client:
             resp = await client.post(
                 f"{self.base_url}/chat/completions",
@@ -61,6 +69,14 @@ class CompatibleChatLLM(LLMProvider):
             return data["choices"][0]["message"]["content"]
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
+        try:
+            async for delta in self._stream(system=system, user=user):
+                yield delta
+        except httpx.HTTPError as exc:
+            logger.warning("llm stream failed: %s", type(exc).__name__)
+            raise UpstreamError("Language model request failed") from exc
+
+    async def _stream(self, *, system: str, user: str) -> AsyncIterator[str]:
         timeout = httpx.Timeout(self.settings.stream_timeout_seconds, connect=self.settings.upstream_timeout_seconds)
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
