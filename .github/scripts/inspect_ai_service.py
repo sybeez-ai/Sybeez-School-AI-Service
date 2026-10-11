@@ -67,11 +67,24 @@ raise SystemExit(code)
 """
 
 
-def probe_startup(service: dict) -> None:
+def summarize_task_definition(label: str, task_def: str) -> None:
+    described = aws(["ecs", "describe-task-definition", "--task-definition", task_def]).get("taskDefinition") or {}
+    revision = described.get("revision")
+    print(f"{label} revision={revision}")
+    for container in described.get("containerDefinitions") or []:
+        if container.get("name") != "ai":
+            continue
+        print(f"{label} image={image_tag(str(container.get('image') or ''))}")
+        names = [str(item.get("name") or "") for item in container.get("environment") or []]
+        print(f"{label} env={','.join(names)}")
+        for item in container.get("secrets") or []:
+            print(f"{label} secret {item.get('name')} from={item.get('valueFrom')}")
+
+
+def probe_startup(service: dict, task_def: str) -> None:
     network = ((service.get("networkConfiguration") or {}).get("awsvpcConfiguration") or {})
     subnets = list(network.get("subnets") or [])
     groups = list(network.get("securityGroups") or [])
-    task_def = str(service.get("taskDefinition") or "")
     if not subnets or not groups or not task_def:
         print("startup probe skipped: service network is incomplete")
         return
@@ -110,7 +123,7 @@ def probe_startup(service: dict) -> None:
         print(f"startup probe was not started: {reason}")
         return
     task_arn = str(tasks[0].get("taskArn") or "")
-    print(f"startup probe task={task_arn.rsplit('/', 1)[-1]}")
+    print(f"startup probe task={task_arn.rsplit('/', 1)[-1]} definition={task_def}")
     subprocess.run(
         ["aws", "ecs", "wait", "tasks-stopped", "--region", REGION, "--cluster", CLUSTER, "--tasks", task_arn],
         check=False,
@@ -191,7 +204,11 @@ def main() -> int:
                     f"reason={container.get('reason')}"
                 )
 
-    probe_startup(service)
+    summarize_task_definition("running", str(service.get("taskDefinition") or ""))
+    latest = aws(["ecs", "describe-task-definition", "--task-definition", "sybeez-school-ai"]).get("taskDefinition") or {}
+    latest_arn = str(latest.get("taskDefinitionArn") or "")
+    summarize_task_definition("latest", latest_arn or "sybeez-school-ai")
+    probe_startup(service, latest_arn or str(service.get("taskDefinition") or ""))
     for desired in ("RUNNING", "STOPPED"):
         listed = aws(["ecs", "list-tasks", "--cluster", CLUSTER, "--service-name", SERVICE, "--desired-status", desired])
         arns = (listed.get("taskArns") or [])[:8]
