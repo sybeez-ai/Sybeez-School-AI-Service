@@ -29,7 +29,8 @@ GET    /api/v1/ai/learning/summary
 
 ```bash
 cp .env.example .env
-# JWT_SECRET must match Core API
+# COGNITO_* must be the same user pool the Core API trusts.
+# Tokens must carry school_id, role, and sub or user_id.
 docker compose -f docker-compose.dev.yml up -d postgres redis
 cd apps/ai && python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
@@ -39,3 +40,12 @@ uvicorn src.main:app --reload --port 8001
 ```
 
 Docs: http://localhost:8001/docs
+
+## Production
+
+- `GET /health` is the process check. `GET /ready` checks Postgres.
+- Every other route requires a Cognito access or ID token. `school_id`, `user_id`, and `role` are taken from that token.
+- Each database transaction runs `set_config('app.school_id', ..., true)` and `set_config('app.user_id', ..., true)` so row level security applies. Apply migration `0002_rls`.
+- The database role must not be a superuser and must not have `BYPASSRLS`.
+- The Fargate image is `infra/docker/ai.Dockerfile`. Pass secrets as environment variables, or set `AWS_SECRETS_MANAGER_SECRET_ID` and grant the task role `secretsmanager:GetSecretValue`.
+- Set `APP_ENV=production`. The process will not start with the dev database password, the dev Core token, or an empty Cognito pool.

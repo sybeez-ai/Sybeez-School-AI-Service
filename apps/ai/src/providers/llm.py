@@ -1,10 +1,15 @@
 from collections.abc import AsyncIterator
 import json
 
+import logging
+
 import httpx
 
 from src.core.config import get_settings
+from src.core.exceptions import UpstreamError
 from src.providers.base import LLMProvider
+
+logger = logging.getLogger("sybeez.ai.llm")
 
 
 class EchoLLM(LLMProvider):
@@ -34,8 +39,12 @@ class CompatibleChatLLM(LLMProvider):
         self.base_url = self.settings.active_chat_base_url.rstrip("/")
         self.model = self.settings.active_chat_model
 
+    def _timeout(self) -> httpx.Timeout:
+        settings = self.settings
+        return httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)
+
     async def complete(self, *, system: str, user: str) -> str:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=self._timeout()) as client:
             resp = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
@@ -53,7 +62,8 @@ class CompatibleChatLLM(LLMProvider):
             return data["choices"][0]["message"]["content"]
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
-        async with httpx.AsyncClient(timeout=120) as client:
+        timeout = httpx.Timeout(self.settings.stream_timeout_seconds, connect=self.settings.upstream_timeout_seconds)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
@@ -86,3 +96,13 @@ def get_llm() -> LLMProvider:
     if settings.active_chat_api_key:
         return CompatibleChatLLM()
     return EchoLLM()
+
+
+async def guarded_complete(llm: LLMProvider, *, system: str, user: str) -> str:
+    try:
+        return await llm.complete(system=system, user=user)
+    except UpstreamError:
+        raise
+    except Exception as exc:
+        logger.exception("llm complete failed")
+        raise UpstreamError("Language model request failed") from exc

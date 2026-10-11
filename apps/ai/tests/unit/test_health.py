@@ -5,9 +5,12 @@ from src.main import app
 
 def test_health():
     client = TestClient(app)
-    r = client.get("/api/v1/ai/health")
+    r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+    prefixed = client.get("/api/v1/ai/health")
+    assert prefixed.status_code == 200
+    assert prefixed.json()["status"] == "ok"
 
 
 def test_chat_requires_auth():

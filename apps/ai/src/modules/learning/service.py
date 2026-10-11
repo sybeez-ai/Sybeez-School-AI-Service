@@ -17,7 +17,7 @@ class LearningService:
     async def summary(self, auth: AuthContext, *, bearer_token: str | None = None) -> LearningSummary:
         school_id = require_school(auth)
         learning = await self.context.for_user(auth, bearer_token=bearer_token)
-        recalled = await self.memory.recall(school_id=school_id, student_id=learning.student.id)
+        recalled = await self.memory.recall(auth, student_id=learning.student.id)
         convs = await self.conversations.list(auth)
         topic = learning.current_learning.topic if learning.current_learning else None
         return LearningSummary(

@@ -1,3 +1,3 @@
-from src.core.database import AsyncSessionLocal, engine, get_db
+from src.core.database import AsyncSessionLocal, engine, install_tenant_context
 
-__all__ = ["AsyncSessionLocal", "engine", "get_db"]
+__all__ = ["AsyncSessionLocal", "engine", "install_tenant_context"]

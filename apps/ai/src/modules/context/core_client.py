@@ -34,7 +34,7 @@ class CoreClient:
     async def ping(self) -> bool:
         url = f"{self.settings.core_api_url.rstrip('/')}/health"
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
+            async with httpx.AsyncClient(timeout=self.settings.health_timeout_seconds) as client:
                 resp = await client.get(url)
                 return resp.status_code < 500
         except httpx.HTTPError:
@@ -55,7 +55,7 @@ class CoreClient:
             params["subject_id"] = str(subject_id)
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=self.settings.upstream_timeout_seconds) as client:
                 resp = await client.get(url, headers=self._headers(bearer_token), params=params)
 
             if resp.status_code == 401:
@@ -67,8 +67,8 @@ class CoreClient:
                 track("core_context_missing", user_id=str(user_id))
                 return self._minimal(user_id, school_id)
             if resp.status_code >= 400:
-                detail = resp.text[:300]
-                raise UpstreamError(f"Core AI context failed: {resp.status_code} {detail}")
+                track("core_context_failed", status=resp.status_code)
+                raise UpstreamError("Core AI context failed")
 
             data = resp.json()
             payload = data.get("data", data) if isinstance(data, dict) else data
@@ -76,10 +76,10 @@ class CoreClient:
         except UpstreamError:
             raise
         except httpx.HTTPError as exc:
+            track("core_context_unreachable", error_type=type(exc).__name__)
             if self.settings.is_dev:
-                track("core_context_fallback", error=str(exc))
                 return self._minimal(user_id, school_id)
-            raise UpstreamError(f"Core API unreachable: {exc}") from exc
+            raise UpstreamError("Core API unreachable") from exc
 
     def _minimal(self, user_id: UUID, school_id: UUID) -> AuthorizedLearningContext:
         return AuthorizedLearningContext(
