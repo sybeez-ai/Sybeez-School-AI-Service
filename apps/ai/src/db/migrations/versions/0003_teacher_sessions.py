@@ -11,6 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 from src.db.rls import teacher_rls_downgrade_sql, teacher_rls_sql
+from src.db.sql_script import split_sql
 
 revision: str = "0003_teacher"
 down_revision: Union[str, None] = "0002_rls"
@@ -38,17 +39,19 @@ def upgrade() -> None:
         if table.name in names and table.name not in existing:
             table.create(bind=bind)
     op.execute(
-        """
-        CREATE INDEX IF NOT EXISTS ix_teacher_sessions_guardians
-        ON teacher_sessions USING gin (guardian_user_ids);
-        CREATE INDEX IF NOT EXISTS ix_teacher_sessions_teachers
-        ON teacher_sessions USING gin (teacher_user_ids);
-        """
+        "CREATE INDEX IF NOT EXISTS ix_teacher_sessions_guardians "
+        "ON teacher_sessions USING gin (guardian_user_ids)"
     )
-    op.execute(teacher_rls_sql())
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_teacher_sessions_teachers "
+        "ON teacher_sessions USING gin (teacher_user_ids)"
+    )
+    for statement in split_sql(teacher_rls_sql()):
+        op.execute(statement)
 
 
 def downgrade() -> None:
-    op.execute(teacher_rls_downgrade_sql())
+    for statement in split_sql(teacher_rls_downgrade_sql()):
+        op.execute(statement)
     for name in _TEACHER_TABLES:
         op.execute(f"DROP TABLE IF EXISTS {name} CASCADE")

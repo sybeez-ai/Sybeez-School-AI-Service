@@ -298,6 +298,16 @@ def test_formatter_and_logs_redact_exceptions(capsys):
         root.setLevel(previous_level)
 
 
+def test_migration_sql_is_one_statement_at_a_time():
+    from src.db.rls import rls_sql, teacher_rls_sql
+    from src.db.sql_script import split_sql
+
+    for script in (rls_sql(), teacher_rls_sql()):
+        parts = split_sql(script)
+        assert len(parts) > 1
+        assert all(";" not in part for part in parts)
+
+
 def test_alembic_version_table_is_separate_from_the_backend():
     source = open("src/db/migrations/env.py", encoding="utf-8").read()
     assert 'VERSION_TABLE = "alembic_version_ai"' in source
