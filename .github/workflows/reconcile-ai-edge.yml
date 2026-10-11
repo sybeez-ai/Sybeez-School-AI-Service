@@ -1,0 +1,26 @@
+name: Reconcile AI edge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    name: Reconcile
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_AI_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Reconcile AI listener, target group, and task access
+        run: python3 .github/scripts/reconcile_ai_edge.py

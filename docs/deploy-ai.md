@@ -19,6 +19,7 @@ Deploy steps, in order:
 3. Register a new revision of task definition `sybeez-school-ai` that uses the SHA image.
 4. Run that revision once with `python -m src.migrate`, which runs `alembic upgrade head`. Subnets, security group, and public IP come from the variables above. The deploy stops if the task exits non-zero. Alembic records its revision in `alembic_version_ai` so it does not follow the school backend's `alembic_version` table.
 5. Update ECS service `sybeez-school-ai` on cluster `sybeez-school-cluster` to that revision. A missing or non-numeric desired count is treated as 0, and any count below 1 is raised to 1. The workflow logs that count, then waits until the service is stable.
+6. Reconcile the public edge for `ai.school.sybeez.ai`. The same job checks target group `sybeez-school-ai-tg` (HTTP `/health` on port 8001), opens tcp 8001 from that load balancer's security group to the AI task security group, and makes the HTTPS listener forward the `ai.school.sybeez.ai` host header to that target group. It leaves every other host rule and the school API service alone. The job then requests `https://ai.school.sybeez.ai/health` and fails if the status is not 200. `workflow_dispatch` on `Reconcile AI edge` runs this step by itself.
 
 The task role still needs `secretsmanager:GetSecretValue` when the service loads `AWS_SECRETS_MANAGER_SECRET_ID`. The workflow does not read secret values. `JWT_SECRET` in that secret must be the same value the School backend uses to sign session tokens.
 

@@ -52,6 +52,9 @@ jobs:
         run: ruff check src tests
       - name: Test
         run: pytest -q
+      - name: Edge reconcile checks
+        working-directory: .github/scripts
+        run: python3 test_reconcile_ai_edge.py
 
   deploy:
     name: Deploy
@@ -191,3 +194,6 @@ jobs:
             --desired-count "$DESIRED" \
             --force-new-deployment
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Reconcile public edge
+        run: python3 .github/scripts/reconcile_ai_edge.py
