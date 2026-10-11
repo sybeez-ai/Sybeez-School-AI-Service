@@ -76,6 +76,18 @@ class Settings(BaseSettings):
     qwen_chat_model: str = "qwen-plus"
     qwen_voice_model: str = "qwen-audio-turbo"
 
+    # Gemini Live speaks narration when GEMINI_API_KEY is set. auto prefers it over Qwen.
+    gemini_api_key: str = ""
+    gemini_live_model: str = "gemini-2.5-flash-native-audio-preview-12-2025"
+    gemini_live_ws_url: str = (
+        "wss://generativelanguage.googleapis.com/ws/"
+        "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+    )
+    voice_provider: str = "auto"
+    teacher_schema_retries: int = 3
+    teacher_rate_limit_per_minute: int = 20
+    teacher_image_hosts: str = "upload.wikimedia.org,commons.wikimedia.org"
+
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_chat_model: str = "deepseek-chat"
@@ -125,6 +137,14 @@ class Settings(BaseSettings):
     @property
     def has_qwen_voice(self) -> bool:
         return bool(self.qwen_voice_api_key)
+
+    @property
+    def has_gemini_live(self) -> bool:
+        return bool(self.gemini_api_key)
+
+    @property
+    def image_hosts(self) -> set[str]:
+        return {host.strip().lower() for host in self.teacher_image_hosts.split(",") if host.strip()}
 
     @property
     def has_sarvam(self) -> bool:
