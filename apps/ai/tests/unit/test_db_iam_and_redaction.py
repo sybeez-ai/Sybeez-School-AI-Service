@@ -298,6 +298,20 @@ def test_formatter_and_logs_redact_exceptions(capsys):
         root.setLevel(previous_level)
 
 
+def test_failure_reason_redacts_the_database_url():
+    from src.migrate import failure_reason
+
+    reason = failure_reason(
+        "ERROR [alembic.env] Database migration failed (InvalidPasswordError): "
+        "postgresql+asyncpg://sybeez_app:s3cret@db.internal/sybeez\n"
+        "RuntimeError: Database migration failed\n"
+    )
+    assert "s3cret" not in reason
+    assert "db.internal" not in reason
+    assert "Database migration failed" in reason
+    assert len(reason) <= 255
+
+
 def test_raise_redacted_drops_the_cause(caplog):
     caplog.set_level(logging.ERROR)
     with pytest.raises(RuntimeError) as exc:
