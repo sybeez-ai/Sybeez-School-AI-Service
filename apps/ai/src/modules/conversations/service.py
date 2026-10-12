@@ -17,6 +17,10 @@ class ConversationService:
 
     async def create(self, auth: AuthContext, data: ConversationCreate, student_id: UUID | None) -> AIConversation:
         school_id = require_school(auth)
+        if student_id == auth.user_id:
+            # Core had no student record (404 -> minimal context uses the user id as a
+            # placeholder). ai_conversations.student_id has an FK to students; store none.
+            student_id = None
         conv = AIConversation(
             school_id=school_id,
             user_id=auth.user_id,
