@@ -83,7 +83,8 @@ class Settings(BaseSettings):
         default="", validation_alias=AliasChoices("QWEN_CHAT_API_KEY", "QWEN_API_KEY")
     )
     qwen_base_url: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-    qwen_chat_model: str = "qwen-plus"
+    # The production DashScope account is denied qwen-plus/max/turbo; qwen3.8-flash is the model it can use.
+    qwen_chat_model: str = "qwen3.8-flash"
     qwen_voice_model: str = "qwen-audio-turbo"
 
     # Gemini Live speaks narration when GEMINI_API_KEY is set. auto prefers it over Qwen.

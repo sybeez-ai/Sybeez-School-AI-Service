@@ -29,6 +29,11 @@ class EchoLLM(LLMProvider):
             yield word + " "
 
 
+def _extra_body(url: str) -> dict:
+    """DashScope models think by default (slow first token); chat/practice want the direct answer."""
+    return {"enable_thinking": False} if "dashscope" in url else {}
+
+
 class CompatibleChatLLM(LLMProvider):
     """OpenAI-compatible chat API (DeepSeek, Qwen, OpenAI) with provider failover."""
 
@@ -78,6 +83,7 @@ class CompatibleChatLLM(LLMProvider):
                         {"role": "user", "content": user},
                     ],
                     "temperature": 0.4,
+                    **_extra_body(url),
                 },
             )
             resp.raise_for_status()
@@ -115,6 +121,7 @@ class CompatibleChatLLM(LLMProvider):
                         {"role": "user", "content": user},
                     ],
                     "temperature": 0.4,
+                    **_extra_body(url),
                 },
             ) as resp:
                 resp.raise_for_status()
