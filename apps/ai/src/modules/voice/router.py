@@ -40,6 +40,7 @@ CONTEXT_TIMEOUT_SECONDS = 3.0
 
 class SessionRequest(BaseModel):
     page: str = Field(default="", max_length=120)
+    portal: str = Field(default="student", max_length=20)
 
 
 class PlanRequest(BaseModel):
@@ -104,7 +105,10 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     if not name:
         raise UpstreamError("Voice provider returned no token")
     context_block, grade_band = await _student_context(auth, bearer)
-    prompt = build_system_prompt(context_block, grade_band, (body.page if body else ""))
+    prompt = build_system_prompt(
+        context_block, grade_band if (not body or body.portal == "student") else None,
+        (body.page if body else ""), (body.portal if body else "student"),
+    )
     return {
         "value": name,
         "expires_at": _iso(expires),
