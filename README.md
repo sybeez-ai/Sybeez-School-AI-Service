@@ -59,3 +59,39 @@ Docs: http://localhost:8001/docs
 - The database role must not be a superuser and must not have `BYPASSRLS`.
 - The Fargate image is `infra/docker/ai.Dockerfile`. Pass secrets as environment variables, or set `AWS_SECRETS_MANAGER_SECRET_ID` and grant the task role `secretsmanager:GetSecretValue`.
 - Set `APP_ENV=production`. The process will not start with the dev database password, the dev Core token, or an empty Cognito pool.
+
+## AI Teacher / AI Assistant agent loop
+
+One loop for every portal ("AI Teacher" on the student portal, "AI Assistant" elsewhere):
+
+1. **Observe** - the browser sends the current page; the session mint adds authorised context from Core
+   (class, subjects, current lesson, grade band) to the system prompt. The model calls `observe_page`
+   to get an accessibility-style outline of the screen (route, headings, every visible control with a
+   ref such as `e12`, blocked/irreversible flags). Pictures shown on the Picture tab are streamed to the
+   Live session as one downscaled JPEG so follow-up questions are answered from the real image.
+2. **Plan** - capture intent, topic and class/subject; decide 1-4 steps. `POST /voice/agent/plan` (Qwen,
+   safety-checked, deterministic fallback) returns a lesson outline: what to say, a short chalk label and
+   which tab (board, picture, 3d) for each step.
+3. **Act** - structured tool calls executed in the browser (`navigate_to_page`, `click_element`,
+   `type_in_element`, `select_option`, `scroll_page`, `open_lesson`, `teach_on_board`). `teach_on_board` is
+   non-blocking: the hand writes while the voice continues, and it can switch tabs and point at picture parts.
+4. **Verify** - every tool result says what changed (new route, headings, control count). On failure the
+   model re-observes and retries once differently, then explains plainly.
+5. **Answer** - the exact, direct reply first (1-2 sentences), then an example only if useful.
+
+Voice transport is browser <-> Gemini Live with an ephemeral token (`POST /voice/gemini/session`, 15-minute
+cap, 6 mints/min). Barge-in is native (Live VAD interrupts; the client flushes audio and pending board beats).
+Conversation memory is the Live session itself (sliding-window compression + session resumption).
+
+Guardrails: student-portal paths only for students, no password/security/account controls, no file pickers,
+no links off-portal, irreversible actions (submit, delete, pay, finish test, payroll) need `confirmed=true`
+after the user says yes. Child-safety checks (`modules/teacher/safety.py`) run on lesson plans and the text
+fallback (`POST /voice/agent/text`). Providers: Gemini Live for voice, Qwen for plans and text.
+
+### Teaching assets
+`GET /assets/topic?q=&subject=&class_no=` returns curated images (with licence and attribution) and an
+optional GLB model for a topic, served from S3 through CloudFront. The catalog is
+`apps/ai/src/modules/assets/manifest.json`, built by `scripts/ingest_teaching_assets.py` (Wikimedia Commons,
+open licences only, Gemini vision child-safety check, upload to S3) and `scripts/build_glb.py`
+(generated primitives). Fallback chain: S3 asset -> `found:false` placeholder (the UI draws a generated
+placeholder and the teacher uses the board). Nothing is hot-linked at runtime.

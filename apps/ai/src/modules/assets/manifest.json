@@ -1,0 +1,1946 @@
+{
+ "version": 1,
+ "cdn": "https://dkkc6iz14iv9b.cloudfront.net",
+ "topics": {
+  "day-and-night": {
+   "slug": "day-and-night",
+   "title": "Why do we have day and night?",
+   "subject": "Science",
+   "classes": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "aliases": [
+    "day night",
+    "earth rotation",
+    "rotation of earth"
+   ],
+   "key_terms": [
+    "Axis",
+    "Day side",
+    "Night side",
+    "Rotation"
+   ],
+   "model3d": "earth-axis",
+   "images": [
+    {
+     "key": "images/science/day-and-night/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/day-and-night/1.jpg",
+     "caption": "Zoomable full resolution image available at davidrumsey.com.This image 3432.014 is a part of image group 3432.000.Hand colored engraved view. Shows the mechanism responsible for the Earth's seasons as it makes it yearly passage around the Sun. Includes explanatory text.See note field above.None foun",
+     "alt": "Why do we have day and night?: Diagram illustrating the earth's annual revolution round the sun, and its diurnal rotation on its axis. showing its position (IA dr diagram-illustrating-the-earths-annua",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Reynolds, James\nEmslie, John",
+     "source": "https://commons.wikimedia.org/wiki/File:Diagram_illustrating_the_earth%27s_annual_revolution_round_the_sun,_and_its_diurnal_rotation_on_its_axis._showing_its_position_(IA_dr_diagram-illustrating-the-earths-annual-revolution-round-the-sun-and-its-d-3432014).jpg"
+    },
+    {
+     "key": "images/science/day-and-night/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/day-and-night/2.jpg",
+     "caption": "Zoomable full resolution image available at davidrumsey.com.This image 13033.023 is a part of image group 13033.000.Hand colored view, illustrates the mechanism responsible for the Earth's seasons as it makes it yearly passage around the Sun. Includes explanatory text.Reynolds created this work in r",
+     "alt": "Why do we have day and night?: The Earth's Annual Revolution Round the Sun, And Its Diurnal Rotation on Its Axis. Drawn & Engraved by John Emslie. Published (IA dr the-earths-annual-revolution-round-t",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Reynolds, James\nEmslie, John",
+     "source": "https://commons.wikimedia.org/wiki/File:The_Earth%27s_Annual_Revolution_Round_the_Sun,_And_Its_Diurnal_Rotation_on_Its_Axis._Drawn_%26_Engraved_by_John_Emslie._Published_(IA_dr_the-earths-annual-revolution-round-the-sun-and-its-diurnal-rotation-on-it-13033023).jpg"
+    },
+    {
+     "key": "images/science/day-and-night/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/day-and-night/3.jpg",
+     "caption": "from poetic prose… to watercolor paintings… to high-resolution 3D models .\nThe cell is a crucible of magical marvels accumulated over millennia.  These authors and artists have tried to convey that in various media over time.  Perhaps because I am a visual thinker, the richer representations are eas",
+     "alt": "Why do we have day and night?: The artistry of the cell spanning 50 years (51072145036).jpg",
+     "license": "CC BY 2.0",
+     "license_url": "https://creativecommons.org/licenses/by/2.0",
+     "author": "Steve Jurvetson from Los Altos, USA",
+     "source": "https://commons.wikimedia.org/wiki/File:The_artistry_of_the_cell_spanning_50_years_(51072145036).jpg"
+    }
+   ]
+  },
+  "linear-equations": {
+   "slug": "linear-equations",
+   "title": "Linear Equations",
+   "subject": "Mathematics",
+   "classes": [
+    7,
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "linear equation",
+    "straight line graph"
+   ],
+   "key_terms": [
+    "Slope",
+    "Intercept",
+    "Variable",
+    "Solution"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/linear-equations/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/linear-equations/1.jpg",
+     "caption": "Flow graph for three simultaneous equations",
+     "alt": "Linear Equations: Flow graph for three linear equations.png",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Brews ohare",
+     "source": "https://commons.wikimedia.org/wiki/File:Flow_graph_for_three_linear_equations.png"
+    },
+    {
+     "key": "images/mathematics/linear-equations/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/linear-equations/2.jpg",
+     "caption": "Revision of File:FuncionLineal02.svg",
+     "alt": "Linear Equations: Linear Function Graph.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Jim.belk",
+     "source": "https://commons.wikimedia.org/wiki/File:Linear_Function_Graph.svg"
+    },
+    {
+     "key": "images/mathematics/linear-equations/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/linear-equations/3.jpg",
+     "caption": "Step-by step reduction of a signal-flow graph",
+     "alt": "Linear Equations: Signal flow graph with two interlocking loops-step02a.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Pierre5018",
+     "source": "https://commons.wikimedia.org/wiki/File:Signal_flow_graph_with_two_interlocking_loops-step02a.svg"
+    }
+   ]
+  },
+  "adding-fractions": {
+   "slug": "adding-fractions",
+   "title": "Adding fractions",
+   "subject": "Mathematics",
+   "classes": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "aliases": [
+    "fractions",
+    "fraction"
+   ],
+   "key_terms": [
+    "Numerator",
+    "Denominator",
+    "Common denominator"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/adding-fractions/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/adding-fractions/1.jpg",
+     "caption": "These circles are shaded with the unit fractions from 1/2 to 1/12. You can change the shading by opening the picture in paint and using the bucket tool to fill sections. There is a similar image available that is blank",
+     "alt": "Adding fractions: Fraction Circles Shaded.png",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Zapotz",
+     "source": "https://commons.wikimedia.org/wiki/File:Fraction_Circles_Shaded.png"
+    },
+    {
+     "key": "images/mathematics/adding-fractions/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/adding-fractions/2.jpg",
+     "caption": "These fraction circles were carefully constructed t o be accurate. Please use them in your classroom!",
+     "alt": "Adding fractions: FractionCircles Blank.PNG",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Zapotz",
+     "source": "https://commons.wikimedia.org/wiki/File:FractionCircles_Blank.PNG"
+    }
+   ]
+  },
+  "seasons": {
+   "slug": "seasons",
+   "title": "Seasons of the year",
+   "subject": "Science",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "season",
+    "why seasons"
+   ],
+   "key_terms": [
+    "Tilt",
+    "Orbit",
+    "Summer",
+    "Winter"
+   ],
+   "model3d": "earth-axis",
+   "images": [
+    {
+     "key": "images/science/seasons/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/seasons/1.jpg",
+     "caption": "Tellurion-MHS 2392-IMG 3736-gradient.jpg",
+     "alt": "Seasons of the year: Tellurion-MHS 2392-IMG 3736-gradient.jpg",
+     "license": "CC BY-SA 3.0 fr",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0/fr/deed.en",
+     "author": "Rama",
+     "source": "https://commons.wikimedia.org/wiki/File:Tellurion-MHS_2392-IMG_3736-gradient.jpg"
+    },
+    {
+     "key": "images/science/seasons/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/seasons/2.jpg",
+     "caption": "The Earth at the start of the 4 (astronomical) seasons as seen from the north and ignoring the atmosphere (no clouds, no twilight).",
+     "alt": "Seasons of the year: North Seasons pt.jpg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Tauʻolunga",
+     "source": "https://commons.wikimedia.org/wiki/File:North_Seasons_pt.jpg"
+    },
+    {
+     "key": "images/science/seasons/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/seasons/3.jpg",
+     "caption": "Схема из Учебного географического атласа для гимназий (1898 год)",
+     "alt": "Seasons of the year: Seasons on Earth.jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Картографическое заведение А. Ильина",
+     "source": "https://commons.wikimedia.org/wiki/File:Seasons_on_Earth.jpg"
+    }
+   ]
+  },
+  "solar-system": {
+   "slug": "solar-system",
+   "title": "The Solar System",
+   "subject": "Science",
+   "classes": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "planets",
+    "sun and planets"
+   ],
+   "key_terms": [
+    "Sun",
+    "Planets",
+    "Orbit"
+   ],
+   "model3d": "solar-system",
+   "images": [
+    {
+     "key": "images/science/solar-system/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/solar-system/1.jpg",
+     "caption": "Moons of solar system scaled to Earth's Moon",
+     "alt": "The Solar System: Moons of solar system v7.jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Originally uploaded from NASA by Bricktop; edited by Deuar, KFP, TotoBaggins",
+     "source": "https://commons.wikimedia.org/wiki/File:Moons_of_solar_system_v7.jpg"
+    },
+    {
+     "key": "images/science/solar-system/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/solar-system/2.jpg",
+     "caption": "Graphical representation of Solar system planets - view from the edge - with Malayalam titles",
+     "alt": "The Solar System: Solar system planets - view from the edge ml.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Sanu N",
+     "source": "https://commons.wikimedia.org/wiki/File:Solar_system_planets_-_view_from_the_edge_ml.svg"
+    },
+    {
+     "key": "images/science/solar-system/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/solar-system/3.jpg",
+     "caption": "From left to right, the graphic features: the Sun, Mercury, Earth, Moon, Mars, Ceres, Asteroid Belt, Jupiter, Saturn, Comets, Uranus, Neptune, Pluto, Makemake, Kuiper Belt Objects, Eris.",
+     "alt": "The Solar System: Solar System graphic by NASA.png",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "NASA",
+     "source": "https://commons.wikimedia.org/wiki/File:Solar_System_graphic_by_NASA.png"
+    }
+   ]
+  },
+  "phases-of-moon": {
+   "slug": "phases-of-moon",
+   "title": "Phases of the Moon",
+   "subject": "Science",
+   "classes": [
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "moon phases",
+    "moon"
+   ],
+   "key_terms": [
+    "New moon",
+    "Full moon",
+    "Crescent"
+   ],
+   "model3d": "moon",
+   "images": [
+    {
+     "key": "images/science/phases-of-moon/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/phases-of-moon/1.jpg",
+     "caption": "The relation of the phases of the Moon with its revolution around Earth. The sizes of Earth and Moon, and their distance you see here are far from real.\nOn this image the following are also depicted: the synchronous rotation of the Moon, the motion of the Earth around the common center of mass, the ",
+     "alt": "Phases of the Moon: Moon phases en.jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Orion 8",
+     "source": "https://commons.wikimedia.org/wiki/File:Moon_phases_en.jpg"
+    },
+    {
+     "key": "images/science/phases-of-moon/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/phases-of-moon/2.jpg",
+     "caption": "Diagram showing the phases of the Moon with Malayalam titles.",
+     "alt": "Phases of the Moon: Phases of the Moon.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Sanu N",
+     "source": "https://commons.wikimedia.org/wiki/File:Phases_of_the_Moon.svg"
+    },
+    {
+     "key": "images/science/phases-of-moon/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/phases-of-moon/3.jpg",
+     "caption": "The relation of the phases of the Moon with its revolution around Earth. The sizes of Earth and Moon, and their distance you see here are far from real.\nOn this image the following are also depicted: the synchronous rotation of the Moon, the motion of the Earth around the common center of mass, the ",
+     "alt": "Phases of the Moon: Moon phases bel.png",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Moon_phases_ru.jpg: Orion 8\nderivative work: Plaga med",
+     "source": "https://commons.wikimedia.org/wiki/File:Moon_phases_bel.png"
+    }
+   ]
+  },
+  "photosynthesis": {
+   "slug": "photosynthesis",
+   "title": "Photosynthesis",
+   "subject": "Science",
+   "classes": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "how plants make food"
+   ],
+   "key_terms": [
+    "Sunlight",
+    "Chlorophyll",
+    "Glucose",
+    "Oxygen"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/photosynthesis/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/photosynthesis/1.jpg",
+     "caption": "Less complicated version of File:C4 photosynthesis is really complicated.svg, without scary molecules and arrows and chemistry.",
+     "alt": "Photosynthesis: C4 photosynthesis is less complicated.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Kelvinsong",
+     "source": "https://commons.wikimedia.org/wiki/File:C4_photosynthesis_is_less_complicated.svg"
+    },
+    {
+     "key": "images/science/photosynthesis/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/photosynthesis/2.jpg",
+     "caption": "Less complicated version of File:C4 photosynthesis is really complicated.svg, without scary molecules and arrows and chemistry - Translation in french.",
+     "alt": "Photosynthesis: C4 photosynthesis is less complicated-fr.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Spedona, d'après  Wikipedia:User:Kelvinsong",
+     "source": "https://commons.wikimedia.org/wiki/File:C4_photosynthesis_is_less_complicated-fr.svg"
+    },
+    {
+     "key": "images/science/photosynthesis/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/photosynthesis/3.jpg",
+     "caption": "C4 photosynthesis is really complicated. Microscope picture is my own work—File:Zea mays leaf Kranz anatomy 1 200×.png.\nAligned for best display at 20%, 40%, 60%, 80%, and 100%. 10% increments may also work.\nSee File:C4 photosynthesis is less complicated.svg for a simpler version, without scary mole",
+     "alt": "Photosynthesis: C4 photosynthesis.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Kelvinsong",
+     "source": "https://commons.wikimedia.org/wiki/File:C4_photosynthesis.svg"
+    }
+   ]
+  },
+  "water-cycle": {
+   "slug": "water-cycle",
+   "title": "The Water Cycle",
+   "subject": "Science",
+   "classes": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "rain cycle"
+   ],
+   "key_terms": [
+    "Evaporation",
+    "Condensation",
+    "Precipitation"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/water-cycle/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/water-cycle/1.jpg",
+     "caption": "Breton version of File:Water Cycle - blank.svg\nShows the water cycle: evaporation from the oceans, the lakes and the rivers, condensation and precipitations, surface runoff, infiltrations.",
+     "alt": "The Water Cycle: Water Cycle - br.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Kevregourez",
+     "source": "https://commons.wikimedia.org/wiki/File:Water_Cycle_-_br.svg"
+    }
+   ]
+  },
+  "parts-of-a-plant": {
+   "slug": "parts-of-a-plant",
+   "title": "Parts of a Plant",
+   "subject": "Science",
+   "classes": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "aliases": [
+    "plant parts"
+   ],
+   "key_terms": [
+    "Root",
+    "Stem",
+    "Leaf",
+    "Flower"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/parts-of-a-plant/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/parts-of-a-plant/1.jpg",
+     "caption": "Title: Aquatic plants of Illinois; an illustrated manual including species submersed, floating, and some of shallow water and muddy shores\nIdentifier: aquaticplantsofi00wint (find matches)\nYear: 1966 (1960s)\nAuthors: Winterringer, Glen Spelman, 1906-; Lopinot, Alvin C\nSubjects: Freshwater plants\nPub",
+     "alt": "Parts of a Plant: Aquatic plants of Illinois; an illustrated manual including species submersed, floating, and some of shallow water and muddy shores (1966) (19126279943).jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Internet Archive Book Images",
+     "source": "https://commons.wikimedia.org/wiki/File:Aquatic_plants_of_Illinois;_an_illustrated_manual_including_species_submersed,_floating,_and_some_of_shallow_water_and_muddy_shores_(1966)_(19126279943).jpg"
+    },
+    {
+     "key": "images/science/parts-of-a-plant/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/parts-of-a-plant/2.jpg",
+     "caption": "Mullein and capers at the ruins of Hierapolis",
+     "alt": "Parts of a Plant: Дивина та каперси DSC 0741.jpg",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "Сарапулов",
+     "source": "https://commons.wikimedia.org/wiki/File:%D0%94%D0%B8%D0%B2%D0%B8%D0%BD%D0%B0_%D1%82%D0%B0_%D0%BA%D0%B0%D0%BF%D0%B5%D1%80%D1%81%D0%B8_DSC_0741.jpg"
+    }
+   ]
+  },
+  "parts-of-a-flower": {
+   "slug": "parts-of-a-flower",
+   "title": "Parts of a Flower",
+   "subject": "Science",
+   "classes": [
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "flower"
+   ],
+   "key_terms": [
+    "Petal",
+    "Stamen",
+    "Pistil",
+    "Sepal"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/parts-of-a-flower/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/parts-of-a-flower/1.jpg",
+     "caption": "Orchid reproductive anatomy, using a Brassia. The flower is adapted for insect pollination. Male (stamen) and female (stigma, style) parts are fused to form a column. The anther is specialised with a sticky viscidium to attach to a visiting insect; a caudicle supports two pollinia, which contain all",
+     "alt": "Parts of a Flower: Orchid reproductive anatomy.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Chiswick Chap",
+     "source": "https://commons.wikimedia.org/wiki/File:Orchid_reproductive_anatomy.svg"
+    }
+   ]
+  },
+  "food-chain": {
+   "slug": "food-chain",
+   "title": "Food Chains",
+   "subject": "Science",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "food web"
+   ],
+   "key_terms": [
+    "Producer",
+    "Consumer",
+    "Decomposer"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/food-chain/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/food-chain/1.jpg",
+     "caption": "Three different kinds of trophic pyramids are illustrated, including a pyramid of numbers (top), pyramid of biomass (middle), and pyramid of energy). The illustration is not drawn to scale and is redrawn from figure 3-12 in (2005)  Fundamentals of ecology, Brooks  Cole, pp. 598  ISBN:  9780534420666",
+     "alt": "Food Chains: EcologicalPyramids.jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Thompsma",
+     "source": "https://commons.wikimedia.org/wiki/File:EcologicalPyramids.jpg"
+    },
+    {
+     "key": "images/science/food-chain/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/food-chain/2.jpg",
+     "caption": "One-third of CO2 emissions from deforestation are embedded in international trade\nIn a study published in Global Environmental Change, Florence Pendrill and colleagues investigated where tropical deforestation was occurring; what products were driving this; and, using global trade models, they trace",
+     "alt": "Food Chains: Deforestation-emissions-in-trade-–-Sankey-01.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hannah Ritchie and Max Roser",
+     "source": "https://commons.wikimedia.org/wiki/File:Deforestation-emissions-in-trade-%E2%80%93-Sankey-01.png"
+    }
+   ]
+  },
+  "states-of-matter": {
+   "slug": "states-of-matter",
+   "title": "States of Matter",
+   "subject": "Science",
+   "classes": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "solid liquid gas"
+   ],
+   "key_terms": [
+    "Solid",
+    "Liquid",
+    "Gas"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/states-of-matter/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/states-of-matter/1.jpg",
+     "caption": "Shows 3 states of matter (solid, liquid, and gas) and mixtures and substances",
+     "alt": "States of Matter: Matter Diagram.PNG",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Arman Cagle",
+     "source": "https://commons.wikimedia.org/wiki/File:Matter_Diagram.PNG"
+    },
+    {
+     "key": "images/science/states-of-matter/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/states-of-matter/2.jpg",
+     "caption": "Illustration of John Tyndall's setup for measuring the radiant heat absorption of gases. This illustration dates from 1861 and it is taken from one of John Tyndall's presentations where he describes his setup for measuring the relative radiant-heat absorption of gases and vapors. The galvanometer qu",
+     "alt": "States of Matter: Tyndalls setup for measuring radiant heat absorption by gases annotated.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "John Tyndall",
+     "source": "https://commons.wikimedia.org/wiki/File:Tyndalls_setup_for_measuring_radiant_heat_absorption_by_gases_annotated.svg"
+    },
+    {
+     "key": "images/science/states-of-matter/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/states-of-matter/3.jpg",
+     "caption": "System enthalpy and the phase transition diagram for different states of matter: solid, liquid, gas, plasma.",
+     "alt": "States of Matter: Entalpia układu.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Zwiadowca21, Maciej Nux",
+     "source": "https://commons.wikimedia.org/wiki/File:Entalpia_uk%C5%82adu.svg"
+    }
+   ]
+  },
+  "digestive-system": {
+   "slug": "digestive-system",
+   "title": "The Human Digestive System",
+   "subject": "Science",
+   "classes": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "digestion"
+   ],
+   "key_terms": [
+    "Stomach",
+    "Intestine",
+    "Oesophagus"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/digestive-system/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/digestive-system/1.jpg",
+     "caption": "The gastrointestinal tract, also called the digestive tract, alimentary canal, or gut, is the system of organs within multicellular animals that takes in food, digests it to extract energy and nutrients, and expels the remaining waste.",
+     "alt": "The Human Digestive System: Digestive system diagram en.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Mariana Ruiz, Jmarchn",
+     "source": "https://commons.wikimedia.org/wiki/File:Digestive_system_diagram_en.svg"
+    },
+    {
+     "key": "images/science/digestive-system/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/digestive-system/2.jpg",
+     "caption": "The gastrointestinal tract, also called the digestive tract, alimentary canal, or gut, is the system of organs within multicellular animals that takes in food, digests it to extract energy and nutrients, and expels the remaining waste.",
+     "alt": "The Human Digestive System: Digestive system diagram mn.png",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "derivative work Elvonudinium",
+     "source": "https://commons.wikimedia.org/wiki/File:Digestive_system_diagram_mn.png"
+    },
+    {
+     "key": "images/science/digestive-system/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/digestive-system/3.jpg",
+     "caption": "The gastrointestinal tract, also called the digestive tract, alimentary canal, or gut, is the system of organs within multicellular animals that takes in food, digests it to extract energy and nutrients, and expels the remaining waste.",
+     "alt": "The Human Digestive System: Digestive system diagram lt.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Original: Mariana Ruiz/Joaquim Alves Gaspar, Jmarchn",
+     "source": "https://commons.wikimedia.org/wiki/File:Digestive_system_diagram_lt.svg"
+    }
+   ]
+  },
+  "human-heart": {
+   "slug": "human-heart",
+   "title": "The Human Heart and Circulation",
+   "subject": "Science",
+   "classes": [
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "heart",
+    "circulatory system"
+   ],
+   "key_terms": [
+    "Atrium",
+    "Ventricle",
+    "Aorta"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/human-heart/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-heart/1.jpg",
+     "caption": "Heart diagram with labels in English. Blue components indicate de-oxygenated blood pathways and red components indicate oxygenated blood pathways.[1][2]",
+     "alt": "The Human Heart and Circulation: Heart diagram-en.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "ZooFari",
+     "source": "https://commons.wikimedia.org/wiki/File:Heart_diagram-en.svg"
+    },
+    {
+     "key": "images/science/human-heart/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-heart/2.jpg",
+     "caption": "Heart diagram with labels in Persian. Blue components indicate de-oxygenated blood pathways and red components indicate oxygenated blood pathways.[1][2]",
+     "alt": "The Human Heart and Circulation: Heart diagram-fa.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Heart_diagram-en.svg: ZooFari\nderivative work: 4nn1l2",
+     "source": "https://commons.wikimedia.org/wiki/File:Heart_diagram-fa.svg"
+    },
+    {
+     "key": "images/science/human-heart/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-heart/3.jpg",
+     "caption": "Heart diagram with labels in Persian language (Farsi). Blue components indicate de-oxygenated blood pathways and red components indicate oxygenated blood pathways.[1][2]",
+     "alt": "The Human Heart and Circulation: Heart diagram-fa.PNG",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "ZooFari edited in Persian by Alborzagros",
+     "source": "https://commons.wikimedia.org/wiki/File:Heart_diagram-fa.PNG"
+    }
+   ]
+  },
+  "respiratory-system": {
+   "slug": "respiratory-system",
+   "title": "The Respiratory System",
+   "subject": "Science",
+   "classes": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "aliases": [
+    "lungs",
+    "breathing"
+   ],
+   "key_terms": [
+    "Lungs",
+    "Trachea",
+    "Diaphragm"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/respiratory-system/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/respiratory-system/1.jpg",
+     "caption": "The respiratory system consists of the airways, the lungs, and the respiratory muscles that mediate the movement of air into and out of the body.",
+     "alt": "The Respiratory System: Respiratory system complete tr.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Respiratory_system_complete_en.svg: LadyofHats, Jmarchn\nderivative work: InfoCan (talk)",
+     "source": "https://commons.wikimedia.org/wiki/File:Respiratory_system_complete_tr.svg"
+    },
+    {
+     "key": "images/science/respiratory-system/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/respiratory-system/2.jpg",
+     "caption": "Simplified view of the human respiratory system. It shows the air passages down to the lungs. It also includes the diaphragm. All the labels are in French.",
+     "alt": "The Respiratory System: Respiratory system complete fr simplified.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "https://commons.wikimedia.org/wiki/User:Berrucomons",
+     "source": "https://commons.wikimedia.org/wiki/File:Respiratory_system_complete_fr_simplified.svg"
+    },
+    {
+     "key": "images/science/respiratory-system/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/respiratory-system/3.jpg",
+     "caption": "The respiratory system consists of the airways, the lungs, and the respiratory muscles that mediate the movement of air into and out of the body.",
+     "alt": "The Respiratory System: Respiratory system complete gl.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "User:LadyofHats",
+     "source": "https://commons.wikimedia.org/wiki/File:Respiratory_system_complete_gl.svg"
+    }
+   ]
+  },
+  "human-skeleton": {
+   "slug": "human-skeleton",
+   "title": "The Human Skeleton",
+   "subject": "Science",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "bones",
+    "skeleton"
+   ],
+   "key_terms": [
+    "Skull",
+    "Ribs",
+    "Spine"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/human-skeleton/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-skeleton/1.jpg",
+     "caption": "Human leg bones with Bengali labels created for use in Bengali Wikipedia",
+     "alt": "The Human Skeleton: Human leg bones labeled bn.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Original by User:LadyofHats (Mariana Ruiz Villar) with translations into Bengali by Sumita Roy Dutta",
+     "source": "https://commons.wikimedia.org/wiki/File:Human_leg_bones_labeled_bn.svg"
+    },
+    {
+     "key": "images/science/human-skeleton/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-skeleton/2.jpg",
+     "caption": "Diagram of a skeleton describing the major bones of the human body.Woodcut\n\nEarly 16th Century",
+     "alt": "The Human Skeleton: Diagram of a skeleton describing the major bones Wellcome L0039197.jpg",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "",
+     "source": "https://commons.wikimedia.org/wiki/File:Diagram_of_a_skeleton_describing_the_major_bones_Wellcome_L0039197.jpg"
+    },
+    {
+     "key": "images/science/human-skeleton/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/human-skeleton/3.jpg",
+     "caption": "Illustration human vertebral column, skull, pelvic bone, scapula",
+     "alt": "The Human Skeleton: Illustration human vertebral column, skull, pelvic bone, scapula.jpg",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "Bobjgalindo",
+     "source": "https://commons.wikimedia.org/wiki/File:Illustration_human_vertebral_column,_skull,_pelvic_bone,_scapula.jpg"
+    }
+   ]
+  },
+  "animal-cell": {
+   "slug": "animal-cell",
+   "title": "Cell Structure",
+   "subject": "Science",
+   "classes": [
+    7,
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "cell",
+    "plant and animal cell"
+   ],
+   "key_terms": [
+    "Nucleus",
+    "Cytoplasm",
+    "Membrane",
+    "Mitochondria"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/animal-cell/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/animal-cell/1.jpg",
+     "caption": "A reworked version of File:Biological_cell.svg.\nDiagram of a typical animal cell.  Organelles are labelled as follows:\n\nNucleolus\nNucleus\nRibosomes (dots on rough reticulum walls)\nVesicle\nRough endoplasmic reticulum\nGolgi apparatus (or \"Golgi body\")\nCytoskeleton\nSmooth endoplasmic reticulum\nMitochon",
+     "alt": "Cell Structure: Animal Cell.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Kelvinsong",
+     "source": "https://commons.wikimedia.org/wiki/File:Animal_Cell.svg"
+    },
+    {
+     "key": "images/science/animal-cell/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/animal-cell/2.jpg",
+     "caption": "A typical animal cell with labeled organelles.",
+     "alt": "Cell Structure: Eukaryotic Cell (animal).jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Mediran",
+     "source": "https://commons.wikimedia.org/wiki/File:Eukaryotic_Cell_(animal).jpg"
+    },
+    {
+     "key": "images/science/animal-cell/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/animal-cell/3.jpg",
+     "caption": "Diagram of a typical animal cell.  Organelles are labelled as follows:\nNucleolus\nNucleus\nRibosome\nVesicle\nRough endoplasmic reticulum\nGolgi apparatus (or \"Golgi body\")\nCytoskeleton\nSmooth endoplasmic reticulum\nMitochondrion\nVacuole\nCytosol\nLysosome\nCentriole",
+     "alt": "Cell Structure: Biological cell.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+     "author": "MesserWoland  and Szczepan1990",
+     "source": "https://commons.wikimedia.org/wiki/File:Biological_cell.svg"
+    }
+   ]
+  },
+  "electric-circuit": {
+   "slug": "electric-circuit",
+   "title": "Simple Electric Circuit",
+   "subject": "Science",
+   "classes": [
+    5,
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "circuit",
+    "electricity"
+   ],
+   "key_terms": [
+    "Battery",
+    "Bulb",
+    "Switch",
+    "Wire"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/electric-circuit/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/electric-circuit/1.jpg",
+     "caption": "A simple DC circuit consisting of a battery (V) and a resistor (R), showing the Poynting vectors (S, blue arrows) in the space surrounding it, as well as the fields it is derived from, the electric field  (E, red arrows) and the magnetic field  (H, green arrows).   The Poynting vector 𝐏=𝐄×𝐇 represen",
+     "alt": "Simple Electric Circuit: Poynting vectors of DC circuit 1.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Chetvorno",
+     "source": "https://commons.wikimedia.org/wiki/File:Poynting_vectors_of_DC_circuit_1.svg"
+    },
+    {
+     "key": "images/science/electric-circuit/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/electric-circuit/2.jpg",
+     "caption": "A simple DC circuit consisting of a battery (V) and a resistor (R), showing the Poynting vectors (S, blue arrows) in the space surrounding it, as well as the fields it is derived from, the electric field  (E, red arrows) and the magnetic field  (H, green arrows).   The Poynting vector 𝐏=𝐄×𝐇 represen",
+     "alt": "Simple Electric Circuit: Poynting vectors of DC circuit.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Chetvorno, King of Hearts",
+     "source": "https://commons.wikimedia.org/wiki/File:Poynting_vectors_of_DC_circuit.svg"
+    },
+    {
+     "key": "images/science/electric-circuit/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/electric-circuit/3.jpg",
+     "caption": "A marine spark-gap transmitter, used on ships during the first 2 decades of the 20th century.  The transformer that produced the high voltage required alternating current (AC) which was generated from the ship's DC power by a motor-alternator set; a DC electric motor turning the shaft of an alternat",
+     "alt": "Simple Electric Circuit: TX onde amortie.JPG",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "inconnue, anonyme. Unknown",
+     "source": "https://commons.wikimedia.org/wiki/File:TX_onde_amortie.JPG"
+    }
+   ]
+  },
+  "magnets": {
+   "slug": "magnets",
+   "title": "Magnets",
+   "subject": "Science",
+   "classes": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "aliases": [
+    "magnet",
+    "magnetism"
+   ],
+   "key_terms": [
+    "North pole",
+    "South pole",
+    "Field lines"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/magnets/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/magnets/1.jpg",
+     "caption": "Three different representations of the magnetic field of a cylindrical bar magnet. Left: Iron filings. Center: field lines. Right: compass needles. The shape and direction of the field was accurately computed in all three cases.",
+     "alt": "Magnets: VFPt cylindermagnet field-representations.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Geek3",
+     "source": "https://commons.wikimedia.org/wiki/File:VFPt_cylindermagnet_field-representations.svg"
+    },
+    {
+     "key": "images/science/magnets/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/magnets/2.jpg",
+     "caption": "Iron-filings-around-magnet.jpg",
+     "alt": "Magnets: Iron-filings-around-magnet.jpg",
+     "license": "CC BY-SA 2.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+     "author": "",
+     "source": "https://commons.wikimedia.org/wiki/File:Iron-filings-around-magnet.jpg"
+    },
+    {
+     "key": "images/science/magnets/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/magnets/3.jpg",
+     "caption": "Photo of the magnetic field of two bar magnets with like poles close together.  The magnetic field was made visible by a layer of iron filings on a piece of paper laid on top of the magnets.  The iron filings are shaped like long thin needles, and orient themselves parallel to the magnetic field lin",
+     "alt": "Magnets: Magnetic field of bar magnets repelling.png",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Alexander Wilmer Duff",
+     "source": "https://commons.wikimedia.org/wiki/File:Magnetic_field_of_bar_magnets_repelling.png"
+    }
+   ]
+  },
+  "reflection-of-light": {
+   "slug": "reflection-of-light",
+   "title": "Reflection of Light",
+   "subject": "Science",
+   "classes": [
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "light",
+    "mirror"
+   ],
+   "key_terms": [
+    "Incident ray",
+    "Reflected ray",
+    "Normal"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/reflection-of-light/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/reflection-of-light/1.jpg",
+     "caption": "Mount Hood reflected in Mirror Lake, Oregon, USA.",
+     "alt": "Reflection of Light: Mount Hood reflected in Mirror Lake, Oregon.jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Oregon's Mt. Hood Territory.",
+     "source": "https://commons.wikimedia.org/wiki/File:Mount_Hood_reflected_in_Mirror_Lake,_Oregon.jpg"
+    },
+    {
+     "key": "images/science/reflection-of-light/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/reflection-of-light/2.jpg",
+     "caption": "Water reflection of stringy gray and white clouds in a pond on a sand beach of Don Khon with rocks at sunrise, Si Phan Don, Laos. Contre-jour photograph, high-dynamic-range imaging.",
+     "alt": "Reflection of Light: Water reflection of stringy gray and white clouds in a pond on a sand beach of Don Khon at sunrise in Laos.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Basile Morin",
+     "source": "https://commons.wikimedia.org/wiki/File:Water_reflection_of_stringy_gray_and_white_clouds_in_a_pond_on_a_sand_beach_of_Don_Khon_at_sunrise_in_Laos.jpg"
+    },
+    {
+     "key": "images/science/reflection-of-light/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/reflection-of-light/3.jpg",
+     "caption": "Water reflection of colorful windows of canal houses, east side, where the houses are located directly on the water, front view, at blue hour, in Damrak avenue, Amsterdam, Netherlands.",
+     "alt": "Reflection of Light: Water reflection of canal houses at blue hour in Damrak Amsterdam the Netherlands.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Basile Morin",
+     "source": "https://commons.wikimedia.org/wiki/File:Water_reflection_of_canal_houses_at_blue_hour_in_Damrak_Amsterdam_the_Netherlands.jpg"
+    }
+   ]
+  },
+  "atom-structure": {
+   "slug": "atom-structure",
+   "title": "Structure of an Atom",
+   "subject": "Science",
+   "classes": [
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "atom",
+    "atomic structure"
+   ],
+   "key_terms": [
+    "Proton",
+    "Neutron",
+    "Electron",
+    "Nucleus"
+   ],
+   "model3d": "atom",
+   "images": [
+    {
+     "key": "images/science/atom-structure/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/atom-structure/1.jpg",
+     "caption": "At 10^-32m is thought to exist a foam of twisted spacetime (Quantum foam). 10^-24m cross section radius of 1 MeV neutrinos. 10^-22m Top Quark, the smallest quark. 10^-20m Bottom and Charm quarks. 10^-18m Up and Down quarks. 10^-16m Protons and Neutrons. 10^-14m Electrons and nuclei. 10^-12m Longest ",
+     "alt": "Structure of an Atom: Orders of magnitude (no annotations, horizontal layout).png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Pablo Carlos Budassi",
+     "source": "https://commons.wikimedia.org/wiki/File:Orders_of_magnitude_(no_annotations,_horizontal_layout).png"
+    }
+   ]
+  },
+  "rock-cycle": {
+   "slug": "rock-cycle",
+   "title": "Rocks and the Rock Cycle",
+   "subject": "Science",
+   "classes": [
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "rocks"
+   ],
+   "key_terms": [
+    "Igneous",
+    "Sedimentary",
+    "Metamorphic"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/science/rock-cycle/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/rock-cycle/1.jpg",
+     "caption": "Diagram describing the rock cycle, from [1] (archived here)",
+     "alt": "Rocks and the Rock Cycle: Rock cycle nps.PNG",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "NPS",
+     "source": "https://commons.wikimedia.org/wiki/File:Rock_cycle_nps.PNG"
+    },
+    {
+     "key": "images/science/rock-cycle/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/rock-cycle/2.jpg",
+     "caption": "Diagram describing the rock cycle of the Earth's lithosphere, from rockcycle.pdf (archived here) In addition to the lithosphere, the Earth also has a hydrosphere, atmosphere and biosphere. The lithosphere is the rigid mechanical layer that makes up the Earth's tectonic plates. This includes the enti",
+     "alt": "Rocks and the Rock Cycle: Rock cycle nps, af labels.png",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "NPS",
+     "source": "https://commons.wikimedia.org/wiki/File:Rock_cycle_nps,_af_labels.png"
+    },
+    {
+     "key": "images/science/rock-cycle/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/science/rock-cycle/3.jpg",
+     "caption": "Diagram of the rock cycle. Microbial cells are included on the portions that are directly impacted by microbes. By affecting properties of sediments and sedimentary rocks, microorganisms in turn affect the feedstock for metamorphic and igneous processes. Thus, the fingerprints of microbial activity ",
+     "alt": "Rocks and the Rock Cycle: Rock cycle.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Microbialmatt",
+     "source": "https://commons.wikimedia.org/wiki/File:Rock_cycle.png"
+    }
+   ]
+  },
+  "layers-of-earth": {
+   "slug": "layers-of-earth",
+   "title": "Layers of the Earth",
+   "subject": "Geography",
+   "classes": [
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "earth structure",
+    "interior of earth"
+   ],
+   "key_terms": [
+    "Crust",
+    "Mantle",
+    "Core"
+   ],
+   "model3d": "earth-layers",
+   "images": [
+    {
+     "key": "images/geography/layers-of-earth/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/layers-of-earth/1.jpg",
+     "caption": "The surface of the earth is an outcome of the processes operating in the interior of the earth. Both exogenic and endogenic forces are constantly shaping the landscape of Earth. It is fascinating to know how scientists have gathered information about the different layers of the Earth.\nBased on the p",
+     "alt": "Layers of the Earth: The layers of the Earth model.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Rajneesh kumar Thakur",
+     "source": "https://commons.wikimedia.org/wiki/File:The_layers_of_the_Earth_model.jpg"
+    },
+    {
+     "key": "images/geography/layers-of-earth/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/layers-of-earth/2.jpg",
+     "caption": "Earth and atmosphere cutaway illustration\n1: Crust\n2: Moho\n3: Upper Mantle\n4: Low-velocity Zone\n5: Lower Mantle\n6: D\"–Layer\n7: Outer Core\n8: Liquid–Solid Boundary\n9: Inner Core\nA: Troposphere\nB: Stratosphere\nC: Mesophere\nD: Thermosphere\nE: Exosphere",
+     "alt": "Layers of the Earth: Earth-crust-cutaway-numbered.svg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Gringer, Washiucho",
+     "source": "https://commons.wikimedia.org/wiki/File:Earth-crust-cutaway-numbered.svg"
+    },
+    {
+     "key": "images/geography/layers-of-earth/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/layers-of-earth/3.jpg",
+     "caption": "Language neutral version of File:Earth-cutaway-schematic-english.svg\nCutaway diagram of Earth's internal structure (to scale) with inset showing detailed breakdown of structure (not to scale).\n\nLabel: 1: Crust (oceanic /1a/ and continental /1b/ crust 0 to 80 km); 2: Mantle (upper mantle, including a",
+     "alt": "Layers of the Earth: Earth-cutaway-schematic-numbered.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Original: USGS Vector:  Anasofiapaixao",
+     "source": "https://commons.wikimedia.org/wiki/File:Earth-cutaway-schematic-numbered.svg"
+    }
+   ]
+  },
+  "types-of-triangles": {
+   "slug": "types-of-triangles",
+   "title": "Types of Triangles",
+   "subject": "Mathematics",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "triangle",
+    "triangles"
+   ],
+   "key_terms": [
+    "Equilateral",
+    "Isosceles",
+    "Scalene"
+   ],
+   "model3d": "pyramid",
+   "images": [
+    {
+     "key": "images/mathematics/types-of-triangles/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/types-of-triangles/1.jpg",
+     "caption": "Construction diagram of the largest circle in a square with an inscribed largest right isosceles triangle  - Details: QRC dia.png",
+     "alt": "Types of Triangles: FS QRC dia.png",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_QRC_dia.png"
+    },
+    {
+     "key": "images/mathematics/types-of-triangles/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/types-of-triangles/2.jpg",
+     "caption": "Six faces of Platonic dodecahedron are six tilings, each consisting of 5×7=35elements that are isosceles triangles, divided into: \n\n5×4=20 acute-angled elements having each only one 36 ° angle,\n5×3=15 obtuse-angled elements having each each two 36 ° angle.\nEvery element of any type is called golden ",
+     "alt": "Types of Triangles: Assorted golden tilings and regular polygons on Platonic dodecahedron.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Arthur Baelde",
+     "source": "https://commons.wikimedia.org/wiki/File:Assorted_golden_tilings_and_regular_polygons_on_Platonic_dodecahedron.svg"
+    }
+   ]
+  },
+  "angles": {
+   "slug": "angles",
+   "title": "Angles",
+   "subject": "Mathematics",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "angle"
+   ],
+   "key_terms": [
+    "Acute",
+    "Right",
+    "Obtuse",
+    "Reflex"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/angles/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/angles/1.jpg",
+     "caption": "Roman copper alloy brooch, of Colchester derivative, Polden Hill type (Mackreth 2011, Part 5, Group 1.b2, The Trumpet Knop, flat wing ends), c.f. Mackreth 2011, 5. 1b1, Plate 68, dating from the late 1st-mid 3rd century (ca. AD75-250). The brooch is almost complete with only the spring, axis bar and",
+     "alt": "Angles: Roman cast copper alloy Roman brooch, probably of Polden Hill Type, dating from the late 1st-2nd century (ca. AD75-175). (FindID 274407).jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "The Portable Antiquities Scheme, Stuart Noon, 2009-10-29 17:17:12",
+     "source": "https://commons.wikimedia.org/wiki/File:Roman_cast_copper_alloy_Roman_brooch,_probably_of_Polden_Hill_Type,_dating_from_the_late_1st-2nd_century_(ca._AD75-175)._(FindID_274407).jpg"
+    },
+    {
+     "key": "images/mathematics/angles/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/angles/2.jpg",
+     "caption": "Ninety-one Roman denarii, principally of the first and second centuries A.D. As found the coins are in differing conditions, some fresh, some encrusted with corrosion products, perhaps the result of contact with vegetable matter in the form of grass which appears to have been deliberately included w",
+     "alt": "Angles: Five of the Roman silver denarii (FindID 808050).jpg",
+     "license": "CC BY 2.0",
+     "license_url": "https://creativecommons.org/licenses/by/2.0",
+     "author": "The Portable Antiquities Scheme, Mark Lodwick, 2016-10-06 13:07:59",
+     "source": "https://commons.wikimedia.org/wiki/File:Five_of_the_Roman_silver_denarii_(FindID_808050).jpg"
+    },
+    {
+     "key": "images/mathematics/angles/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/angles/3.jpg",
+     "caption": "Flint end and sidescraper, subrectangular in plan, trapezoidal in section, and triangular and arched in profile, with sub-parallel lateral margins, unimarginal worked edges on the right edge of dorsal face, and at the distal end. The right edge has been retouched to create a cutting edge with an ang",
+     "alt": "Angles: Neolithic flint core scraper (ventral) (FindID 117766).jpg",
+     "license": "CC BY-SA 2.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+     "author": "Royal Institution of Cornwall, Anna Tyacke, 2005-12-31 18:45:03",
+     "source": "https://commons.wikimedia.org/wiki/File:Neolithic_flint_core_scraper_(ventral)_(FindID_117766).jpg"
+    }
+   ]
+  },
+  "parts-of-a-circle": {
+   "slug": "parts-of-a-circle",
+   "title": "Parts of a Circle",
+   "subject": "Mathematics",
+   "classes": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "aliases": [
+    "circle"
+   ],
+   "key_terms": [
+    "Radius",
+    "Diameter",
+    "Chord",
+    "Circumference"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/parts-of-a-circle/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/parts-of-a-circle/1.jpg",
+     "caption": "A circle showing the chord, secant, radius, diameter and tangent.",
+     "alt": "Parts of a Circle: CIRCLE LINES-en.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Jleedev",
+     "source": "https://commons.wikimedia.org/wiki/File:CIRCLE_LINES-en.svg"
+    },
+    {
+     "key": "images/mathematics/parts-of-a-circle/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/parts-of-a-circle/2.jpg",
+     "caption": "A circle showing the chord, segment, radius, diameter, and tangent translated in Sanskrit",
+     "alt": "Parts of a Circle: CIRCLE LINES-sa.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Jleedev Translated into Sanskrit by user:unnatbharat1011@gmail.com",
+     "source": "https://commons.wikimedia.org/wiki/File:CIRCLE_LINES-sa.svg"
+    },
+    {
+     "key": "images/mathematics/parts-of-a-circle/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/parts-of-a-circle/3.jpg",
+     "caption": "A circle showing the chord, segment, radius, diameter and tangent.",
+     "alt": "Parts of a Circle: CIRCLE LINES-hi.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Translated in hi by Goutam1962",
+     "source": "https://commons.wikimedia.org/wiki/File:CIRCLE_LINES-hi.svg"
+    }
+   ]
+  },
+  "area-and-perimeter": {
+   "slug": "area-and-perimeter",
+   "title": "Area and Perimeter",
+   "subject": "Mathematics",
+   "classes": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "perimeter",
+    "area"
+   ],
+   "key_terms": [
+    "Area",
+    "Perimeter",
+    "Length",
+    "Breadth"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/area-and-perimeter/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/area-and-perimeter/1.jpg",
+     "caption": "Largest square in an equilateral triangle",
+     "alt": "Area and Perimeter: FS EQ dia.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_EQ_dia.png"
+    },
+    {
+     "key": "images/mathematics/area-and-perimeter/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/area-and-perimeter/2.jpg",
+     "caption": "Construction diagram of the largest circle in a square with an inscribed largest right isosceles triangle  - Details: QRC dia.png",
+     "alt": "Area and Perimeter: FS QRC dia.png",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_QRC_dia.png"
+    },
+    {
+     "key": "images/mathematics/area-and-perimeter/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/area-and-perimeter/3.jpg",
+     "caption": "Largest semicircle in a square",
+     "alt": "Area and Perimeter: FS QH dia.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_QH_dia.png"
+    }
+   ]
+  },
+  "number-line": {
+   "slug": "number-line",
+   "title": "The Number Line",
+   "subject": "Mathematics",
+   "classes": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "aliases": [
+    "number lines",
+    "integers"
+   ],
+   "key_terms": [
+    "Zero",
+    "Positive",
+    "Negative"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/number-line/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/number-line/1.jpg",
+     "caption": "Climate diagram of Paris, 40750 years ago.",
+     "alt": "The Number Line: Climate diagram of Paris 40750 bp 1.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Merikanto",
+     "source": "https://commons.wikimedia.org/wiki/File:Climate_diagram_of_Paris_40750_bp_1.svg"
+    },
+    {
+     "key": "images/mathematics/number-line/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/number-line/2.jpg",
+     "caption": "This represents that values ranging from 2^23 to 2^24 can only represent integers, 2^24 to 2^25 can only represent even numbers, and 2^25 until 2^26 can only represent values multiples of 4 on a single-precision floating point format.",
+     "alt": "The Number Line: A number line representing single-precision floating point's numbers and numbers that it cannot display.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Joeleoj123",
+     "source": "https://commons.wikimedia.org/wiki/File:A_number_line_representing_single-precision_floating_point%27s_numbers_and_numbers_that_it_cannot_display.png"
+    },
+    {
+     "key": "images/mathematics/number-line/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/number-line/3.jpg",
+     "caption": "Climate diagrams: precipittaion in millimeters, temperature in degrees Cesius",
+     "alt": "The Number Line: Climate diagram 65Ma lon -140 lat 75.png",
+     "license": "CC BY 4.0",
+     "license_url": "https://creativecommons.org/licenses/by/4.0",
+     "author": "Merikanto",
+     "source": "https://commons.wikimedia.org/wiki/File:Climate_diagram_65Ma_lon_-140_lat_75.png"
+    }
+   ]
+  },
+  "pythagoras-theorem": {
+   "slug": "pythagoras-theorem",
+   "title": "Pythagoras Theorem",
+   "subject": "Mathematics",
+   "classes": [
+    8,
+    9,
+    10
+   ],
+   "aliases": [
+    "pythagoras",
+    "right angled triangle"
+   ],
+   "key_terms": [
+    "Hypotenuse",
+    "Base",
+    "Perpendicular"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/pythagoras-theorem/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/pythagoras-theorem/1.jpg",
+     "caption": "Largest equilateral triangle in a square",
+     "alt": "Pythagoras Theorem: FS QE dia.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_QE_dia.png"
+    },
+    {
+     "key": "images/mathematics/pythagoras-theorem/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/pythagoras-theorem/2.jpg",
+     "caption": "Largest non-right-angle isosceles triangle inscribed in a square",
+     "alt": "Pythagoras Theorem: FS QJ dia.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_QJ_dia.png"
+    },
+    {
+     "key": "images/mathematics/pythagoras-theorem/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/pythagoras-theorem/3.jpg",
+     "caption": "Largest circle in a equailateral triangle that contains a largest circle",
+     "alt": "Pythagoras Theorem: FS EC(2) dia.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Hans G. Oberlack",
+     "source": "https://commons.wikimedia.org/wiki/File:FS_EC(2)_dia.png"
+    }
+   ]
+  },
+  "symmetry": {
+   "slug": "symmetry",
+   "title": "Symmetry",
+   "subject": "Mathematics",
+   "classes": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "lines of symmetry"
+   ],
+   "key_terms": [
+    "Line of symmetry",
+    "Mirror image"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/symmetry/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/symmetry/1.jpg",
+     "caption": "Mirror reflection of a water buffalo (Bubalus bubalis) bathing in a pond on the island of Don Det (Si Phan Don, Laos)",
+     "alt": "Symmetry: Mirror reflection of a water buffalo bathing in a pond in Laos.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Basile Morin",
+     "source": "https://commons.wikimedia.org/wiki/File:Mirror_reflection_of_a_water_buffalo_bathing_in_a_pond_in_Laos.jpg"
+    },
+    {
+     "key": "images/mathematics/symmetry/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/symmetry/2.jpg",
+     "caption": "Reflection symmetry",
+     "alt": "Symmetry: Reflection symmetry.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+     "author": "Stanmar",
+     "source": "https://commons.wikimedia.org/wiki/File:Reflection_symmetry.svg"
+    },
+    {
+     "key": "images/mathematics/symmetry/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/symmetry/3.jpg",
+     "caption": "A JR East 205-600 series 4-car EMU on the Nikko Line",
+     "alt": "Symmetry: 205kei train in JR Nikko line 02.JPG",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Fortew F",
+     "source": "https://commons.wikimedia.org/wiki/File:205kei_train_in_JR_Nikko_line_02.JPG"
+    }
+   ]
+  },
+  "solid-shapes": {
+   "slug": "solid-shapes",
+   "title": "3D Shapes",
+   "subject": "Mathematics",
+   "classes": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "cube",
+    "cuboid",
+    "cylinder",
+    "cone",
+    "sphere",
+    "solid shapes"
+   ],
+   "key_terms": [
+    "Cube",
+    "Cylinder",
+    "Cone",
+    "Sphere"
+   ],
+   "model3d": "cube",
+   "images": [
+    {
+     "key": "images/mathematics/solid-shapes/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/solid-shapes/1.jpg",
+     "caption": "1. Sphere, 2. Pyramid, 3. Cube, 4. Taurus, 5. Tube, 6. Cylinder, 7. Corn or cone, 8. Torus knot",
+     "alt": "3D Shapes: SolidShapes.png",
+     "license": "CC BY-SA 2.5",
+     "license_url": "https://creativecommons.org/licenses/by-sa/2.5",
+     "author": "Caduser2003 at ml.wikipedia",
+     "source": "https://commons.wikimedia.org/wiki/File:SolidShapes.png"
+    },
+    {
+     "key": "images/mathematics/solid-shapes/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/solid-shapes/2.jpg",
+     "caption": "Rendering of basic three dimensional shape for artist or student reference.",
+     "alt": "3D Shapes: Basic 3D Shape - Cone - Red.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Michael Tiffany",
+     "source": "https://commons.wikimedia.org/wiki/File:Basic_3D_Shape_-_Cone_-_Red.png"
+    },
+    {
+     "key": "images/mathematics/solid-shapes/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/solid-shapes/3.jpg",
+     "caption": "Rendering of basic three dimensional shape for artist or student reference.",
+     "alt": "3D Shapes: Basic 3D Shape - Cone - Blue.png",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Michael Tiffany",
+     "source": "https://commons.wikimedia.org/wiki/File:Basic_3D_Shape_-_Cone_-_Blue.png"
+    }
+   ]
+  },
+  "bar-graph": {
+   "slug": "bar-graph",
+   "title": "Bar Graphs and Data Handling",
+   "subject": "Mathematics",
+   "classes": [
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "aliases": [
+    "data handling",
+    "bar chart"
+   ],
+   "key_terms": [
+    "Axis",
+    "Scale",
+    "Bar"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/mathematics/bar-graph/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/bar-graph/1.jpg",
+     "caption": "A mixed chart with dash-patterns and markers on graph lines, and a fill pattern on one series of bars.",
+     "alt": "Bar Graphs and Data Handling: Charts SVG Example 17 - Graph Style Adjustments.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Innesw",
+     "source": "https://commons.wikimedia.org/wiki/File:Charts_SVG_Example_17_-_Graph_Style_Adjustments.svg"
+    },
+    {
+     "key": "images/mathematics/bar-graph/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/bar-graph/2.jpg",
+     "caption": "Vertical bar chart showing global average temperature change, with each bar/column being coloured according to the Warming stripes colouring scheme of Ed Hawkins (climatologist, who conceived the idea of warming stripes.\nRaw data was downloaded from Berkeley Earth. See links to data at 20200324 Glob",
+     "alt": "Bar Graphs and Data Handling: 20210822 Global warming - warming stripes bar chart.svg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "RCraig09",
+     "source": "https://commons.wikimedia.org/wiki/File:20210822_Global_warming_-_warming_stripes_bar_chart.svg"
+    },
+    {
+     "key": "images/mathematics/bar-graph/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/mathematics/bar-graph/3.jpg",
+     "caption": "This is an example of a stacked bar plot. It was made using R software, and uses a subset of data from the 2014 Behavioral Risk Factor Surveillance System (BRFSS).",
+     "alt": "Bar Graphs and Data Handling: Example of a Stacked Bar Plot in Healthcare Data Analysis using R Software.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Monika Wahi",
+     "source": "https://commons.wikimedia.org/wiki/File:Example_of_a_Stacked_Bar_Plot_in_Healthcare_Data_Analysis_using_R_Software.jpg"
+    }
+   ]
+  },
+  "continents-and-oceans": {
+   "slug": "continents-and-oceans",
+   "title": "Continents and Oceans",
+   "subject": "Geography",
+   "classes": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "aliases": [
+    "continents",
+    "oceans",
+    "world map"
+   ],
+   "key_terms": [
+    "Asia",
+    "Africa",
+    "Pacific Ocean"
+   ],
+   "model3d": "earth-axis",
+   "images": [
+    {
+     "key": "images/geography/continents-and-oceans/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/continents-and-oceans/1.jpg",
+     "caption": "world map",
+     "alt": "Continents and Oceans: World-map-continents-oceans (1).jpg",
+     "license": "CC0",
+     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+     "author": "Atharva kurhe",
+     "source": "https://commons.wikimedia.org/wiki/File:World-map-continents-oceans_(1).jpg"
+    },
+    {
+     "key": "images/geography/continents-and-oceans/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/continents-and-oceans/2.jpg",
+     "caption": "A NEW MAP of the TERRAQUEOUS GLOBE according to the Ancient Diſcoveries and moſt general Diviſions of it into CONTINENTS and OCEANS. Published in Oxford. Dedicated to Wiliam, Duke of Glouchester. Similar to National Library of Australia, NK 4620. Hand Colored.",
+     "alt": "Continents and Oceans: Antique World Map of Continents and Oceans 1700.png",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Engraver: Michael Burghers, author: English mathematician and clergyman Edward Wells (1667-1727).",
+     "source": "https://commons.wikimedia.org/wiki/File:Antique_World_Map_of_Continents_and_Oceans_1700.png"
+    },
+    {
+     "key": "images/geography/continents-and-oceans/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/continents-and-oceans/3.jpg",
+     "caption": "A NEW MAP of the TERRAQUEOUS GLOBE according to the Ancient Diſcoveries and moſt general Diviſions of it into CONTINENTS and OCEANS. Published in Oxford. Dedicated to Wiliam, Duke of Glouchester. Similar to National Library of Australia, NK 4620. Hand Colored.",
+     "alt": "Continents and Oceans: Antique World Map of Continents and Oceans 1700 (cropped).png",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Made by English mathematician and clergyman Edward Wells (1667-1727). Engraver: Michael Burghers",
+     "source": "https://commons.wikimedia.org/wiki/File:Antique_World_Map_of_Continents_and_Oceans_1700_(cropped).png"
+    }
+   ]
+  },
+  "india-physical-map": {
+   "slug": "india-physical-map",
+   "title": "India: Physical Features",
+   "subject": "Geography",
+   "classes": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "aliases": [
+    "india map",
+    "physical map of india"
+   ],
+   "key_terms": [
+    "Himalayas",
+    "Ganga plain",
+    "Deccan plateau"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/geography/india-physical-map/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/india-physical-map/1.jpg",
+     "caption": "Physical map of India with various physiographic divisions. Inset map shows various physiographic divisions and main map shows physiographic subdivisions, various ranges, lakes, rivers, peaks and passes.\nSmall correction: River Mahi and River Sabarmati names were replaced by each other in the map.",
+     "alt": "India: Physical Features: Physical Map of India.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Vigneshdm1990",
+     "source": "https://commons.wikimedia.org/wiki/File:Physical_Map_of_India.jpg"
+    },
+    {
+     "key": "images/geography/india-physical-map/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/india-physical-map/2.jpg",
+     "caption": "A rare and remarkable discovery this is Joseph Tiefenthaler and Anquetil-Duperron’s important 1784 map of the Ganges and Ghaghara (Karnali) river system.  As a whole this map is a significant advancement over earlier mappings of this region as evidenced in the works of De L’Isle and others.    Prese",
+     "alt": "India: Physical Features: 1784 Tiefenthaler Map of the Ganges and Ghaghara Rivers, India - Geographicus - Ganges-teifentaller-1784.jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "http://www.geographicus.com/mm5/cartographers/tiefenthaler.txt",
+     "source": "https://commons.wikimedia.org/wiki/File:1784_Tiefenthaler_Map_of_the_Ganges_and_Ghaghara_Rivers,_India_-_Geographicus_-_Ganges-teifentaller-1784.jpg"
+    },
+    {
+     "key": "images/geography/india-physical-map/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/india-physical-map/3.jpg",
+     "caption": "A rare and remarkable discovery this is Joseph Tiefenthaler and Anquetil-Duperron’s important 1784 map of the Ganges and Ghaghara (Karnali) river system.  As a whole this map is a significant advancement over earlier mappings of this region as evidenced in the works of De L’Isle and others.    Prese",
+     "alt": "India: Physical Features: Lake Manasarovar, Tibet map in French and Persian detail from 1784 Tiefenthaler Map of the Ganges and Ghaghara Rivers, India (cropped).jpg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "http://www.geographicus.com/mm5/cartographers/tiefenthaler.txt",
+     "source": "https://commons.wikimedia.org/wiki/File:Lake_Manasarovar,_Tibet_map_in_French_and_Persian_detail_from_1784_Tiefenthaler_Map_of_the_Ganges_and_Ghaghara_Rivers,_India_(cropped).jpg"
+    }
+   ]
+  },
+  "latitude-longitude": {
+   "slug": "latitude-longitude",
+   "title": "Latitudes and Longitudes",
+   "subject": "Geography",
+   "classes": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "aliases": [
+    "latitude",
+    "longitude",
+    "equator"
+   ],
+   "key_terms": [
+    "Equator",
+    "Prime meridian",
+    "Tropic of Cancer"
+   ],
+   "model3d": "earth-axis",
+   "images": [
+    {
+     "key": "images/geography/latitude-longitude/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/latitude-longitude/1.jpg",
+     "caption": "Although dated 1630, this “modern depiction of the world,” by Philippus Eckebrecht appears to be a later reprinting. It is dedicated to Emperor Leopold I of the Holy Roman Empire, who came to the throne only in 1658. The map was originally produced at the behest of astronomer Johannes Kepler (1571-1",
+     "alt": "Latitudes and Longitudes: A Modern Depiction of the World, Done by Philippus Eckebrecht, Citizen of Nuremberg, for the Sole Reason of Bringing the Depiction into Line with the Equator According to the",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "Kepler, Johannes (1571-1630)",
+     "source": "https://commons.wikimedia.org/wiki/File:A_Modern_Depiction_of_the_World,_Done_by_Philippus_Eckebrecht,_Citizen_of_Nuremberg,_for_the_Sole_Reason_of_Bringing_the_Depiction_into_Line_with_the_Equator_According_to_the_Astronomical_Tabulae_WDL166.png"
+    }
+   ]
+  },
+  "volcano": {
+   "slug": "volcano",
+   "title": "Volcanoes",
+   "subject": "Geography",
+   "classes": [
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "volcanoes"
+   ],
+   "key_terms": [
+    "Magma",
+    "Vent",
+    "Crater"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/geography/volcano/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/volcano/1.jpg",
+     "caption": "Schematic cross-section through a stratovolcano (synonym: composite volcano), showing the physical build-up. A: inflow of magma through central vent; B: central vent; C: pyroclastic cone on the flank of the volcano; D: lava flow; E: sill; F: pyroclastic deposits; G: crater and crater infill; H: old ",
+     "alt": "Volcanoes: Stratovolcano cross-section.svg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Woudloper",
+     "source": "https://commons.wikimedia.org/wiki/File:Stratovolcano_cross-section.svg"
+    },
+    {
+     "key": "images/geography/volcano/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/volcano/2.jpg",
+     "caption": "Cataclysmic eruption to present.  \n Eruptions of ash and pumice: The cataclysmic eruption started from a vent on the northeast side of the volcano as a towering column of ash, with pyroclastic flows spreading to the northeast.\nCaldera collapse: As more magma was erupted, cracks opened up around the ",
+     "alt": "Volcanoes: Mount Mazama eruption timeline 4.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "U.S. GEOLOGICAL SURVEY and the NATIONAL PARK SERVICE, Nachgebaut von Benedikt.Seidl",
+     "source": "https://commons.wikimedia.org/wiki/File:Mount_Mazama_eruption_timeline_4.svg"
+    },
+    {
+     "key": "images/geography/volcano/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/geography/volcano/3.jpg",
+     "caption": "Cataclysmic eruption to present.  \n Eruptions of ash and pumice: The cataclysmic eruption started from a vent on the northeast side of the volcano as a towering column of ash, with pyroclastic flows spreading to the northeast.\nCaldera collapse: As more magma was erupted, cracks opened up around the ",
+     "alt": "Volcanoes: Mount Mazama eruption timeline 1.svg",
+     "license": "Public domain",
+     "license_url": "",
+     "author": "U.S. GEOLOGICAL SURVEY and the NATIONAL PARK SERVICE, Nachgebaut von Benedikt.Seidl",
+     "source": "https://commons.wikimedia.org/wiki/File:Mount_Mazama_eruption_timeline_1.svg"
+    }
+   ]
+  },
+  "indus-valley": {
+   "slug": "indus-valley",
+   "title": "Indus Valley Civilisation",
+   "subject": "History",
+   "classes": [
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "harappan civilisation"
+   ],
+   "key_terms": [
+    "Harappa",
+    "Mohenjo-daro",
+    "Great Bath"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/history/indus-valley/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/history/indus-valley/1.jpg",
+     "caption": "Excavated ruins of Mohenjo-daro, with the Great Bath in the foreground and the granary mound in the background",
+     "alt": "Indus Valley Civilisation: Mohenjo-daro.jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Saqib Qayyum",
+     "source": "https://commons.wikimedia.org/wiki/File:Mohenjo-daro.jpg"
+    },
+    {
+     "key": "images/history/indus-valley/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/history/indus-valley/2.jpg",
+     "caption": "Excavated ruins of Mohenjo-daro, with the Great Bath in the foreground and the granary mound in the background",
+     "alt": "Indus Valley Civilisation: Indus Valley Civilisation banner.jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+     "author": "Saqib Qayyum",
+     "source": "https://commons.wikimedia.org/wiki/File:Indus_Valley_Civilisation_banner.jpg"
+    }
+   ]
+  },
+  "taj-mahal": {
+   "slug": "taj-mahal",
+   "title": "The Mughal Empire and the Taj Mahal",
+   "subject": "History",
+   "classes": [
+    6,
+    7,
+    8
+   ],
+   "aliases": [
+    "mughals",
+    "mughal empire"
+   ],
+   "key_terms": [
+    "Shah Jahan",
+    "Marble",
+    "Agra"
+   ],
+   "model3d": null,
+   "images": [
+    {
+     "key": "images/history/taj-mahal/1.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/history/taj-mahal/1.jpg",
+     "caption": "Taj Mahal, Agra, India.",
+     "alt": "The Mughal Empire and the Taj Mahal: Taj Mahal, Agra, India edit2.jpg",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Yann; edited by King of Hearts",
+     "source": "https://commons.wikimedia.org/wiki/File:Taj_Mahal,_Agra,_India_edit2.jpg"
+    },
+    {
+     "key": "images/history/taj-mahal/2.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/history/taj-mahal/2.jpg",
+     "caption": "Taj Mahal, Agra, India",
+     "alt": "The Mughal Empire and the Taj Mahal: El Taj Mahal-Agra India0023.JPG",
+     "license": "CC BY-SA 4.0",
+     "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+     "author": "Diego Delso",
+     "source": "https://commons.wikimedia.org/wiki/File:El_Taj_Mahal-Agra_India0023.JPG"
+    },
+    {
+     "key": "images/history/taj-mahal/3.jpg",
+     "url": "https://dkkc6iz14iv9b.cloudfront.net/images/history/taj-mahal/3.jpg",
+     "caption": "Taj Mahal, Agra, India.",
+     "alt": "The Mughal Empire and the Taj Mahal: Taj Mahal in March 2004.jpg",
+     "license": "CC BY-SA 3.0",
+     "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+     "author": "Dhirad, picture edited by J. A. Knudsen",
+     "source": "https://commons.wikimedia.org/wiki/File:Taj_Mahal_in_March_2004.jpg"
+    }
+   ]
+  }
+ },
+ "models": {
+  "atom": {
+   "key": "models/atom.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/atom.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 61264
+  },
+  "cube": {
+   "key": "models/cube.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/cube.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 1240
+  },
+  "earth-axis": {
+   "key": "models/earth-axis.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/earth-axis.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 131620
+  },
+  "earth-layers": {
+   "key": "models/earth-layers.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/earth-layers.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 145420
+  },
+  "moon": {
+   "key": "models/moon.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/moon.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 103336
+  },
+  "pyramid": {
+   "key": "models/pyramid.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/pyramid.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 1100
+  },
+  "solar-system": {
+   "key": "models/solar-system.glb",
+   "url": "https://dkkc6iz14iv9b.cloudfront.net/models/solar-system.glb",
+   "license": "Original work, CC0 (generated by Sybeez)",
+   "bytes": 231596
+  }
+ }
+}
