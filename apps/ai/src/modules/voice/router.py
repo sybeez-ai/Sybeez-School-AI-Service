@@ -43,6 +43,18 @@ class SessionRequest(BaseModel):
     portal: str = Field(default="student", max_length=20)
 
 
+class AuditEvent(BaseModel):
+    """One agent action, reported by the browser right after a tool ran. Never carries typed values."""
+
+    tool: str = Field(max_length=64, pattern=r"^[a-z_0-9]+$")
+    ok: bool
+    portal: str = Field(default="student", max_length=24)
+    page: str = Field(default="", max_length=200)
+    target: str = Field(default="", max_length=120)
+    confirmed: bool = False
+    detail: str = Field(default="", max_length=200)
+
+
 class PlanRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=200)
     subject: str = Field(default="", max_length=60)
@@ -157,3 +169,18 @@ async def agent_text(body: TextRequest, auth: AuthDep, bearer: BearerToken):
         logger.warning("text fallback failed: %s", type(exc).__name__)
         raise UpstreamError("Teacher is busy, please try again") from None
     return {"reply": reply}
+
+
+@router.post("/agent/audit", status_code=202)
+async def agent_audit(body: AuditEvent, auth: AuthDep):
+    """Audit trail of what Sybeez did for a user (structured log line in CloudWatch)."""
+    if auth.school_id is None:
+        raise ForbiddenError("School context required")
+    if not await limiter.allow(f"voice-audit:{auth.user_id}", limit=240):
+        raise AppError("Too many audit events", code="rate_limited", status_code=429)
+    logger.info(
+        "agent_audit user=%s school=%s portal=%s tool=%s ok=%s confirmed=%s page=%r target=%r detail=%r",
+        auth.user_id, auth.school_id, body.portal, body.tool, body.ok, body.confirmed,
+        body.page, body.target, body.detail,
+    )
+    return {"recorded": True}

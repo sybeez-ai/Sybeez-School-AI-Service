@@ -84,3 +84,14 @@ def test_agent_text_blocks_unsafe_without_model():
     response = client.post("/api/v1/ai/voice/agent/text", json={"message": "how to hack my school"}, headers=bearer(mint()))
     assert response.status_code == 200
     assert "can't help" in response.json()["reply"]
+
+
+def test_agent_audit_records_and_requires_auth(caplog):
+    event = {"tool": "click_element", "ok": True, "portal": "finance", "page": "/finance/fees", "target": "Save"}
+    assert client.post("/api/v1/ai/voice/agent/audit", json=event).status_code == 401
+    with caplog.at_level("INFO"):
+        response = client.post("/api/v1/ai/voice/agent/audit", json=event, headers=bearer(mint()))
+    assert response.status_code == 202
+    assert any("agent_audit" in r.getMessage() and "click_element" in r.getMessage() for r in caplog.records)
+    bad = {**event, "tool": "Bad Tool!"}
+    assert client.post("/api/v1/ai/voice/agent/audit", json=bad, headers=bearer(mint())).status_code == 422
