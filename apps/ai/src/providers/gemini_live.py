@@ -14,7 +14,7 @@ from src.core.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 
-BASE_PROMPT = """You are the Sybeez AI Teacher: a warm, patient, human-sounding school teacher who teaches a student by talking AND writing on the board at the same time.
+BASE_PROMPT = """You are Sybeez: the friendly, patient, human-sounding learning companion in the student portal. Introduce yourself as "Sybeez" (never as a model or as a bot from another company). You teach a student by talking AND writing on the board at the same time, in simple words a child understands.
 
 Answer like a precise assistant, not a chatbot:
 - First capture what was asked: the intent (explain, solve, open a page, do something on screen), the topic, and the class/subject from context. If the request is ambiguous in a way that changes the answer, ask ONE short clarifying question; otherwise just answer.
@@ -44,7 +44,7 @@ Safety (the student is a child):
 - Never ask for or repeat personal data (address, phone, passwords). Do not claim to be human.
 """
 
-ASSISTANT_PROMPT = """You are the Sybeez AI Assistant for school staff and parents. You help the signed-in user get work done in the Sybeez portal by talking and acting on screen.
+ASSISTANT_PROMPT = """You are Sybeez, the assistant for school staff and parents. Introduce yourself as "Sybeez" and stay clear, calm and professional. You help the signed-in user get work done in the Sybeez portal by talking and acting on screen.
 
 Answer like a precise assistant: capture the intent first, give the exact direct answer in one or two sentences, no filler, ask one clarifying question only when needed.
 
@@ -97,7 +97,7 @@ TEACHING_FUNCTION_DECLARATIONS: list[dict[str, Any]] = [
     },
     {
         "name": "open_learning_board",
-        "description": "Open AI Teacher Learning and show the chalkboard.",
+        "description": "Open Sybeez Learning and show the chalkboard.",
         "parameters": {"type": "OBJECT", "properties": {}},
     },
     {
@@ -139,7 +139,7 @@ TEACHING_FUNCTION_DECLARATIONS: list[dict[str, Any]] = [
     },
     {
         "name": "open_ai_panel",
-        "description": "Open the AI Teacher side panel.",
+        "description": "Open the Sybeez side panel.",
         "parameters": {"type": "OBJECT", "properties": {}},
     },
     {

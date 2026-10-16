@@ -30,6 +30,7 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
             return httpx.Response(503, json={})  # Core context is best-effort
         seen["key"] = request.headers.get("x-goog-api-key")
         seen["url"] = str(request.url)
+        seen["body"] = __import__("json").loads(request.content)
         return httpx.Response(200, json={"name": "auth_tokens/abc"})
 
     real = httpx.AsyncClient
@@ -44,6 +45,8 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
     assert "child" in body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
     assert body["session"]["max_minutes"] == voice.SESSION_MINUTES
     assert seen["key"] == "server-key" and seen["url"] == voice.TOKEN_URL
+    # Regression: without a fieldMask Gemini drops the client prompt and tools.
+    assert seen["body"]["fieldMask"] == "model,generationConfig,sessionResumption"
 
 
 def test_upstream_rejection_is_502(monkeypatch):
@@ -81,3 +84,14 @@ def test_agent_text_blocks_unsafe_without_model():
     response = client.post("/api/v1/ai/voice/agent/text", json={"message": "how to hack my school"}, headers=bearer(mint()))
     assert response.status_code == 200
     assert "can't help" in response.json()["reply"]
+
+
+def test_agent_audit_records_and_requires_auth(caplog):
+    event = {"tool": "click_element", "ok": True, "portal": "finance", "page": "/finance/fees", "target": "Save"}
+    assert client.post("/api/v1/ai/voice/agent/audit", json=event).status_code == 401
+    with caplog.at_level("INFO"):
+        response = client.post("/api/v1/ai/voice/agent/audit", json=event, headers=bearer(mint()))
+    assert response.status_code == 202
+    assert any("agent_audit" in r.getMessage() and "click_element" in r.getMessage() for r in caplog.records)
+    bad = {**event, "tool": "Bad Tool!"}
+    assert client.post("/api/v1/ai/voice/agent/audit", json=bad, headers=bearer(mint())).status_code == 422
