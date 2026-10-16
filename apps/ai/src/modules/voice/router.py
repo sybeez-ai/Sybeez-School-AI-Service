@@ -84,6 +84,10 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
         "uses": 1,
         "expireTime": _iso(expires),
         "newSessionExpireTime": _iso(now + timedelta(minutes=START_WITHIN_MINUTES)),
+        # Without a fieldMask Google locks the WHOLE setup to the token's copy, which silently drops
+        # the client's systemInstruction and tools (the model then chats but never calls a tool).
+        # Lock only model/generationConfig/sessionResumption; prompt and tools come from the setup.
+        "fieldMask": "model,generationConfig,sessionResumption",
         "bidiGenerateContentSetup": {
             "model": f"models/{model}",
             "generationConfig": {"responseModalities": ["AUDIO"]},

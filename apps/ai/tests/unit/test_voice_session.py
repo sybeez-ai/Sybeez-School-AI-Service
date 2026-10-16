@@ -30,6 +30,7 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
             return httpx.Response(503, json={})  # Core context is best-effort
         seen["key"] = request.headers.get("x-goog-api-key")
         seen["url"] = str(request.url)
+        seen["body"] = __import__("json").loads(request.content)
         return httpx.Response(200, json={"name": "auth_tokens/abc"})
 
     real = httpx.AsyncClient
@@ -44,6 +45,8 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
     assert "child" in body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
     assert body["session"]["max_minutes"] == voice.SESSION_MINUTES
     assert seen["key"] == "server-key" and seen["url"] == voice.TOKEN_URL
+    # Regression: without a fieldMask Gemini drops the client prompt and tools.
+    assert seen["body"]["fieldMask"] == "model,generationConfig,sessionResumption"
 
 
 def test_upstream_rejection_is_502(monkeypatch):
