@@ -1,4 +1,4 @@
-"""Short-lived Gemini Live tokens for web and mobile voice.
+"""Short-lived Gemini Live tokens plus the agent endpoints (plan, text fallback).
 
 The client authenticates with the same School backend JWT; the server keeps
 GEMINI_API_KEY and returns a single-use ephemeral token (docs: ai.google.dev
@@ -6,15 +6,22 @@ gemini-api/docs/ephemeral-tokens). Ephemeral tokens only work on v1alpha/v1beta
 BidiGenerateContentConstrained.
 """
 
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
 import httpx
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
-from src.api.dependencies import AuthDep
+from src.api.dependencies import AuthDep, BearerToken
 from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
+from src.core.rate_limit import limiter
+from src.modules.context.service import ContextService
+from src.modules.voice import agent
+from src.providers.gemini_live import build_gemini_live_setup, build_system_prompt
+from src.providers.llm import get_llm
 
 logger = logging.getLogger("sybeez.ai.voice")
 
@@ -25,25 +32,54 @@ CONSTRAINED_WS_URL = (
     "wss://generativelanguage.googleapis.com/ws/"
     "google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained"
 )
-SESSION_MINUTES = 30
+SESSION_MINUTES = 15  # hard cap per Live session (cost control)
 START_WITHIN_MINUTES = 2
+MINTS_PER_MINUTE = 6
+CONTEXT_TIMEOUT_SECONDS = 3.0
+
+
+class SessionRequest(BaseModel):
+    page: str = Field(default="", max_length=120)
+
+
+class PlanRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=200)
+    subject: str = Field(default="", max_length=60)
+    language: str = Field(default="English", max_length=30)
+
+
+class TextRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1500)
+    page: str = Field(default="", max_length=120)
 
 
 def _iso(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+async def _student_context(auth, bearer: str | None):
+    """Authorized class/subject/lesson context from Core; never blocks voice if Core is slow."""
+    try:
+        ctx = await asyncio.wait_for(ContextService().for_user(auth, bearer_token=bearer), CONTEXT_TIMEOUT_SECONDS)
+        return ctx.as_prompt_block(), ctx.grade_band
+    except Exception as exc:
+        logger.info("voice context unavailable: %s", type(exc).__name__)
+        return "", None
+
+
 @router.post("/gemini/session")
-async def gemini_session(auth: AuthDep):
+async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionRequest | None = None):
     if auth.school_id is None:
         raise ForbiddenError("School context required")
     settings = get_settings()
     if not settings.gemini_api_key:
         raise AppError("Voice is not configured", code="voice_unavailable", status_code=503)
+    if not await limiter.allow(f"voice-mint:{auth.user_id}", limit=MINTS_PER_MINUTE):
+        raise AppError("Too many voice sessions, try again shortly", code="rate_limited", status_code=429)
     model = settings.gemini_live_model
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=SESSION_MINUTES)
-    body = {
+    token_body = {
         "uses": 1,
         "expireTime": _iso(expires),
         "newSessionExpireTime": _iso(now + timedelta(minutes=START_WITHIN_MINUTES)),
@@ -56,7 +92,7 @@ async def gemini_session(auth: AuthDep):
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
-                TOKEN_URL, json=body, headers={"x-goog-api-key": settings.gemini_api_key}
+                TOKEN_URL, json=token_body, headers={"x-goog-api-key": settings.gemini_api_key}
             )
     except httpx.HTTPError as exc:
         logger.warning("gemini token request failed: %s", type(exc).__name__)
@@ -67,9 +103,49 @@ async def gemini_session(auth: AuthDep):
     name = (response.json() or {}).get("name")
     if not name:
         raise UpstreamError("Voice provider returned no token")
+    context_block, grade_band = await _student_context(auth, bearer)
+    prompt = build_system_prompt(context_block, grade_band, (body.page if body else ""))
     return {
         "value": name,
         "expires_at": _iso(expires),
         "ws_url": CONSTRAINED_WS_URL,
-        "session": {"model": model, "provider": "gemini"},
+        "setup": build_gemini_live_setup(settings, system_prompt=prompt),
+        "session": {"model": model, "voice": settings.gemini_live_voice, "provider": "gemini",
+                    "max_minutes": SESSION_MINUTES},
     }
+
+
+@router.post("/agent/plan")
+async def agent_plan(body: PlanRequest, auth: AuthDep, bearer: BearerToken):
+    """Qwen builds a guarded lesson outline (speech + board label + which tab) for the agent."""
+    if auth.school_id is None:
+        raise ForbiddenError("School context required")
+    if not await limiter.allow(f"voice-plan:{auth.user_id}", limit=20):
+        raise AppError("Slow down a little", code="rate_limited", status_code=429)
+    _, grade_band = await _student_context(auth, bearer)
+    try:
+        plan = await agent.make_plan(
+            get_llm(), topic=body.topic, subject=body.subject, grade_band=grade_band, language=body.language
+        )
+    except PermissionError:
+        message = agent.refusal_for(body.topic, grade_band) or "Let's pick a school topic."
+        return {"allowed": False, "message": message}
+    return {"allowed": True, **plan.model_dump()}
+
+
+@router.post("/agent/text")
+async def agent_text(body: TextRequest, auth: AuthDep, bearer: BearerToken):
+    """Text fallback when Live voice is unavailable (Qwen, same safety rules)."""
+    if auth.school_id is None:
+        raise ForbiddenError("School context required")
+    if not await limiter.allow(f"voice-text:{auth.user_id}", limit=30):
+        raise AppError("Slow down a little", code="rate_limited", status_code=429)
+    context_block, grade_band = await _student_context(auth, bearer)
+    try:
+        reply = await agent.text_answer(
+            get_llm(), message=body.message, context_block=context_block, grade_band=grade_band, page=body.page
+        )
+    except Exception as exc:
+        logger.warning("text fallback failed: %s", type(exc).__name__)
+        raise UpstreamError("Teacher is busy, please try again") from None
+    return {"reply": reply}

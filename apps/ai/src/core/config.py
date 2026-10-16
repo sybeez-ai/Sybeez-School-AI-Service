@@ -88,11 +88,13 @@ class Settings(BaseSettings):
 
     # Gemini Live speaks narration when GEMINI_API_KEY is set. auto prefers it over Qwen.
     gemini_api_key: str = ""
-    gemini_live_model: str = "gemini-2.5-flash-native-audio-preview-12-2025"
+    gemini_live_model: str = "gemini-3.8-live"
+    gemini_live_voice: str = "Aoede"
     gemini_live_ws_url: str = (
         "wss://generativelanguage.googleapis.com/ws/"
-        "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+        "google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained"
     )
+    ai_request_timeout: float = 30
     voice_provider: str = "auto"
     teacher_schema_retries: int = 3
     teacher_rate_limit_per_minute: int = 20

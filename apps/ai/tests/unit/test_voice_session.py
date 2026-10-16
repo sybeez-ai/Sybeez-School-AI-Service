@@ -26,6 +26,8 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "generativelanguage" not in request.url.host:
+            return httpx.Response(503, json={})  # Core context is best-effort
         seen["key"] = request.headers.get("x-goog-api-key")
         seen["url"] = str(request.url)
         return httpx.Response(200, json={"name": "auth_tokens/abc"})
@@ -38,6 +40,9 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
     assert body["value"] == "auth_tokens/abc"
     assert body["ws_url"].endswith("BidiGenerateContentConstrained")
     assert "server-key" not in response.text
+    assert body["setup"]["setup"]["tools"][0]["functionDeclarations"]
+    assert "child" in body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
+    assert body["session"]["max_minutes"] == voice.SESSION_MINUTES
     assert seen["key"] == "server-key" and seen["url"] == voice.TOKEN_URL
 
 
@@ -50,3 +55,29 @@ def test_upstream_rejection_is_502(monkeypatch):
         lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={})), **kw),
     )
     assert client.post(PATH, headers=bearer(mint())).status_code == 502
+
+
+def _mock_gemini(monkeypatch):
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        voice.httpx,
+        "AsyncClient",
+        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"name": "auth_tokens/x"})), **kw),
+    )
+
+
+def test_agent_plan_refuses_unsafe_topic():
+    response = client.post("/api/v1/ai/voice/agent/plan", json={"topic": "how to make a bomb"}, headers=bearer(mint()))
+    assert response.status_code == 200
+    assert response.json()["allowed"] is False
+
+
+def test_agent_plan_requires_auth():
+    assert client.post("/api/v1/ai/voice/agent/plan", json={"topic": "x"}).status_code == 401
+    assert client.post("/api/v1/ai/voice/agent/text", json={"message": "x"}).status_code == 401
+
+
+def test_agent_text_blocks_unsafe_without_model():
+    response = client.post("/api/v1/ai/voice/agent/text", json={"message": "how to hack my school"}, headers=bearer(mint()))
+    assert response.status_code == 200
+    assert "can't help" in response.json()["reply"]
