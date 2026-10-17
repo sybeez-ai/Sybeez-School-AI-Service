@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 
 from src.api.dependencies import AuthDep
 from src.core.exceptions import ForbiddenError
-from src.modules.assets.catalog import lookup
+from src.modules.assets.catalog import library, lookup
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -19,3 +19,14 @@ async def topic_assets(
     if auth.school_id is None:
         raise ForbiddenError("School context required")
     return lookup(q, subject=subject, class_no=class_no)
+
+
+@router.get("/library")
+async def asset_library(
+    auth: AuthDep,
+    subject: str = Query(default="", max_length=60),
+    class_no: int | None = Query(default=None, ge=1, le=12),
+):
+    if auth.school_id is None:
+        raise ForbiddenError("School context required")
+    return {"items": library(subject=subject, class_no=class_no)}
