@@ -9,7 +9,9 @@ from src.modules.evaluation.router import router as evaluation_router
 from src.modules.learning.router import router as learning_router
 from src.modules.mcq.router import router as mcq_router
 from src.modules.practice.router import router as practice_router
+from src.modules.reading.router import router as reading_router
 from src.modules.teacher.router import router as teacher_router
+from src.modules.translate.router import router as translate_router
 from src.modules.voice.router import router as voice_router
 
 api_router = APIRouter()
@@ -22,6 +24,8 @@ api_router.include_router(evaluation_router)
 api_router.include_router(learning_router)
 api_router.include_router(teacher_router)
 api_router.include_router(voice_router)
+api_router.include_router(translate_router)
+api_router.include_router(reading_router)
 api_router.include_router(assets_router)
 
 
