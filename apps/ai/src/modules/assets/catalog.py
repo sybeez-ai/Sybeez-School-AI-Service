@@ -45,6 +45,38 @@ def _score(topic: dict, q_tokens: set[str], q_text: str) -> float:
     return best
 
 
+def clean_regions(raw) -> list[dict]:
+    """Per-image pointing regions from the manifest: [{label, x, y}] with x,y clamped to 0..1."""
+    out: list[dict] = []
+    for r in (raw or [])[:12]:
+        try:
+            label = str(r["label"]).strip()[:40]
+            x, y = float(r["x"]), float(r["y"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if label:
+            out.append({"label": label, "x": round(min(1.0, max(0.0, x)), 3), "y": round(min(1.0, max(0.0, y)), 3)})
+    return out
+
+
+def library(*, subject: str = "", class_no: int | None = None) -> list[dict]:
+    """Browsable list of every topic with pictures and/or a 3D model."""
+    manifest = load_manifest()
+    items = []
+    for topic in manifest["topics"].values():
+        if subject and topic["subject"].lower() != subject.lower():
+            continue
+        if class_no and class_no not in topic.get("classes", []):
+            continue
+        items.append({
+            "slug": topic["slug"], "title": topic["title"], "subject": topic["subject"],
+            "classes": topic.get("classes", []), "images": len(topic.get("images", [])),
+            "has_3d": bool(manifest["models"].get(topic.get("model3d") or "")),
+            "thumb": (topic.get("images") or [{}])[0].get("url"),
+        })
+    return sorted(items, key=lambda i: (i["subject"], i["title"]))
+
+
 def lookup(query: str, *, subject: str = "", class_no: int | None = None, limit: int = 3) -> dict:
     """Best topic match; always returns a safe answer (placeholder when nothing matches)."""
     manifest = load_manifest()
@@ -75,7 +107,10 @@ def lookup(query: str, *, subject: str = "", class_no: int | None = None, limit:
         "classes": topic.get("classes", []),
         "key_terms": topic.get("key_terms", []),
         "images": [
-            {k: img[k] for k in ("url", "caption", "alt", "license", "license_url", "author", "source")}
+            {
+                **{k: img[k] for k in ("url", "caption", "alt", "license", "license_url", "author", "source")},
+                "regions": clean_regions(img.get("regions")),
+            }
             for img in topic["images"][:limit]
         ],
         "model3d": ({"name": topic["model3d"], "url": model["url"], "license": model["license"]} if model else None),
