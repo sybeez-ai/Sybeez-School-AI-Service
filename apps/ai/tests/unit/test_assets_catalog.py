@@ -45,4 +45,4 @@ def test_portal_prompts():
     assert "AI teacher" in student and "Sy-beez" in student and "Sibis" in student and "child" in student
     staff = build_system_prompt("", None, "/finance/payroll", "finance")
     assert "AI assistant" in staff and "Sy-beez" in staff and "confirmed=true" in staff and "child" not in staff
-    assert "learning companion" in build_system_prompt("", None, None, "not-a-portal")
+    assert "AI teacher" in build_system_prompt("", None, None, "not-a-portal")
