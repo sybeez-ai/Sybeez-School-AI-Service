@@ -54,22 +54,31 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 # set_config(..., true) is SET LOCAL. SET LOCAL cannot take a bound parameter.
 TENANT_SCHOOL_SQL = "SELECT set_config('app.school_id', :school_id, true)"
 TENANT_USER_SQL = "SELECT set_config('app.user_id', :user_id, true)"
+TENANT_ROLE_SQL = "SELECT set_config('app.role', :role, true)"
 
 
-def tenant_context_statements(school_id: UUID, user_id: UUID) -> list[tuple[str, dict[str, str]]]:
-    return [
+def tenant_context_statements(
+    school_id: UUID, user_id: UUID, role: str | None = None
+) -> list[tuple[str, dict[str, str]]]:
+    statements: list[tuple[str, dict[str, str]]] = [
         (TENANT_SCHOOL_SQL, {"school_id": str(school_id)}),
         (TENANT_USER_SQL, {"user_id": str(user_id)}),
     ]
+    if role:
+        # The backend's restrictive *_role policies read app.role; without it they fail closed.
+        statements.append((TENANT_ROLE_SQL, {"role": role}))
+    return statements
 
 
-def install_tenant_context(session: AsyncSession, *, school_id: UUID, user_id: UUID) -> None:
+def install_tenant_context(
+    session: AsyncSession, *, school_id: UUID, user_id: UUID, role: str | None = None
+) -> None:
     """Apply token identity to every transaction on this session.
 
     The third argument of set_config is is_local=true, so the values die with the
     transaction and cannot leak to the next pooled connection.
     """
-    statements = tenant_context_statements(school_id, user_id)
+    statements = tenant_context_statements(school_id, user_id, role)
 
     def _apply(_session, _transaction, connection) -> None:
         for sql, params in statements:
