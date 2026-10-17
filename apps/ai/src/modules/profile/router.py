@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import AuthDep, BearerToken, get_db
@@ -44,10 +44,12 @@ def _audit(auth, action: str, target) -> None:
     logger.info("profile_audit action=%s actor=%s role=%s target=%s", action, auth.user_id, auth.role, target)
 
 
-async def _row(db: AsyncSession, student_user_id: UUID) -> StudentLearningProfile | None:
-    result = await db.execute(
-        select(StudentLearningProfile).where(StudentLearningProfile.student_user_id == student_user_id)
-    )
+async def _row(db: AsyncSession, student_user_id: UUID, *, any_id: bool = False) -> StudentLearningProfile | None:
+    """any_id also matches the school-side student id (what parent screens hold)."""
+    cond = StudentLearningProfile.student_user_id == student_user_id
+    if any_id:
+        cond = or_(cond, StudentLearningProfile.student_id == student_user_id)
+    result = await db.execute(select(StudentLearningProfile).where(cond))
     return result.scalar_one_or_none()
 
 
@@ -93,7 +95,7 @@ async def my_profile(db: Annotated[AsyncSession, Depends(get_db)], auth: AuthDep
 async def student_profile(student_user_id: UUID, db: Annotated[AsyncSession, Depends(get_db)], auth: AuthDep):
     if auth.role not in {"PARENT", "TEACHER"}:
         raise ForbiddenError("Only a linked parent or teacher can read a student's profile")
-    row = await _row(db, student_user_id)  # RLS hides everyone else's students
+    row = await _row(db, student_user_id, any_id=True)  # RLS hides everyone else's students
     if row is None:
         raise NotFoundError("No learning profile for this student yet")
     _audit(auth, "read", student_user_id)
