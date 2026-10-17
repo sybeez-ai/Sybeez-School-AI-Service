@@ -9,8 +9,8 @@ from src.modules.evaluation.router import router as evaluation_router
 from src.modules.learning.router import router as learning_router
 from src.modules.mcq.router import router as mcq_router
 from src.modules.practice.router import router as practice_router
-from src.modules.reading.router import router as reading_router
 from src.modules.profile.router import router as profile_router
+from src.modules.reading.router import router as reading_router
 from src.modules.teacher.router import router as teacher_router
 from src.modules.translate.notice_router import router as notice_translate_router
 from src.modules.translate.router import router as translate_router
