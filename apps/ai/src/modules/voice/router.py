@@ -19,6 +19,7 @@ from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
 from src.modules.context.service import ContextService
+from src.modules.profile.router import profile_prompt_block
 from src.modules.voice import agent
 from src.providers.gemini_live import build_gemini_live_setup, build_system_prompt
 from src.providers.llm import get_llm
@@ -134,10 +135,12 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     name = (response.json() or {}).get("name")
     if not name:
         raise UpstreamError("Voice provider returned no token")
-    context_block, grade_band = await _student_context(auth, bearer)
+    (context_block, grade_band), profile_block = await asyncio.gather(
+        _student_context(auth, bearer), profile_prompt_block(auth)
+    )
     prompt = build_system_prompt(
         context_block, grade_band if (not body or body.portal == "student") else None,
-        (body.page if body else ""), (body.portal if body else "student"),
+        (body.page if body else ""), (body.portal if body else "student"), profile_block,
     )
     return {
         "value": name,
@@ -212,6 +215,8 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
     extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
     if context_block:
         extra += "\nUser context (authoritative):\n" + context_block[:1200]
+    if student:
+        extra += "\n" + (await profile_prompt_block(auth))[:900]
     messages = []
     for m in body.messages:
         item: dict = {"role": m.role, "content": m.content or ""}
