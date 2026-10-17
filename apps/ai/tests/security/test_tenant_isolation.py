@@ -215,7 +215,7 @@ def test_database_context_comes_from_token(monkeypatch):
         async def rollback(self):
             return None
 
-    def fake_install(session, *, school_id, user_id):
+    def fake_install(session, *, school_id, user_id, role=None):
         captured["school_id"] = school_id
         captured["user_id"] = user_id
 
@@ -252,3 +252,9 @@ async def test_core_context_school_must_match_token(monkeypatch):
 def test_untrusted_proxy_ignores_forwarded_for():
     scope = {"headers": [(b"x-forwarded-for", b"1.2.3.4, 10.0.0.8")], "client": ("10.9.9.9", 1)}
     assert client_ip(scope) == "10.9.9.9"
+
+
+def test_role_is_bound_for_backend_role_policies():
+    statements = tenant_context_statements(SCHOOL_A, USER_A, "STUDENT")
+    assert statements[2] == ("SELECT set_config('app.role', :role, true)", {"role": "STUDENT"})
+    assert len(tenant_context_statements(SCHOOL_A, USER_A)) == 2

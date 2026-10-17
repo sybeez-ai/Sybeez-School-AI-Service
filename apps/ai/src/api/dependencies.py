@@ -28,7 +28,9 @@ async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     auth = await get_auth_context(request)
     school_id = require_school(auth)
     async with AsyncSessionLocal() as session:
-        install_tenant_context(session, school_id=school_id, user_id=auth.user_id)
+        install_tenant_context(
+            session, school_id=school_id, user_id=auth.user_id, role=auth.role
+        )
         try:
             yield session
             await session.commit()
