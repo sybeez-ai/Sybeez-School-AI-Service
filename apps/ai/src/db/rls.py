@@ -117,3 +117,34 @@ def teacher_rls_downgrade_sql() -> str:
         statements.append(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY;")
         statements.append(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
     return "\n".join(statements)
+
+
+PROFILE_TABLE = "student_learning_profiles"
+
+
+def profile_rls_sql() -> str:
+    """Student, linked parents and linked teachers read; only the student writes."""
+    user = _user_uuid()
+    using = (
+        f"{tenant_policy_clause()} AND (student_user_id = {user} OR "
+        f"{user} = ANY(guardian_user_ids) OR {user} = ANY(teacher_user_ids))"
+    )
+    check = f"{tenant_policy_clause()} AND student_user_id = {user}"
+    return "\n".join(
+        [
+            f"ALTER TABLE {PROFILE_TABLE} ENABLE ROW LEVEL SECURITY;",
+            f"ALTER TABLE {PROFILE_TABLE} FORCE ROW LEVEL SECURITY;",
+            f"DROP POLICY IF EXISTS {PROFILE_TABLE}_audience ON {PROFILE_TABLE};",
+            f"CREATE POLICY {PROFILE_TABLE}_audience ON {PROFILE_TABLE} USING ({using}) WITH CHECK ({check});",
+        ]
+    )
+
+
+def profile_rls_downgrade_sql() -> str:
+    return "\n".join(
+        [
+            f"DROP POLICY IF EXISTS {PROFILE_TABLE}_audience ON {PROFILE_TABLE};",
+            f"ALTER TABLE {PROFILE_TABLE} NO FORCE ROW LEVEL SECURITY;",
+            f"ALTER TABLE {PROFILE_TABLE} DISABLE ROW LEVEL SECURITY;",
+        ]
+    )

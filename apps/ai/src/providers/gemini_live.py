@@ -185,7 +185,8 @@ ALLOWED_PORTALS = {"student", "teacher", "parent", "school-admin", "finance", "p
 
 
 def build_system_prompt(
-    context_block: str = "", grade_band: str | None = None, page: str | None = None, portal: str | None = None
+    context_block: str = "", grade_band: str | None = None, page: str | None = None, portal: str | None = None,
+    profile_block: str = "",
 ) -> str:
     """Persona + per-user context (from Core, never trusted from the client)."""
     portal = (portal or "student").strip().lower()
@@ -206,6 +207,8 @@ def build_system_prompt(
         parts.append("Student level: middle school - clear steps with everyday examples.")
     elif band == "secondary":
         parts.append("Student level: secondary - precise terms, worked examples, exam-style practice.")
+    if profile_block:
+        parts.append(profile_block[:900])
     if context_block:
         parts.append("Student context (authoritative):\n" + context_block[:1500])
     if page:
