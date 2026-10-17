@@ -42,7 +42,7 @@ def test_lookup_never_hotlinks_and_falls_back(monkeypatch):
 
 def test_portal_prompts():
     student = build_system_prompt("Class: 6", "elementary", "/student/learning", "student")
-    assert "Sybeez" in student and "AI Teacher" not in student and "child" in student
+    assert "AI teacher" in student and "Sy-beez" in student and "Sibis" in student and "child" in student
     staff = build_system_prompt("", None, "/finance/payroll", "finance")
-    assert "Sybeez" in staff and "AI Assistant" not in staff and "confirmed=true" in staff and "child" not in staff
+    assert "AI assistant" in staff and "Sy-beez" in staff and "confirmed=true" in staff and "child" not in staff
     assert "learning companion" in build_system_prompt("", None, None, "not-a-portal")
