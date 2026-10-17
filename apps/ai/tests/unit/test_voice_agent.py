@@ -75,3 +75,15 @@ def test_setup_has_context_tools_and_safety():
     assert {"navigate_to_page", "teach_on_board", "set_learning_mode"} <= names
     assert len(names) == len(TEACHING_FUNCTION_DECLARATIONS)
     assert "keys" not in str(setup).lower()
+
+
+def test_to_openai_tools_lowercases_types_and_drops_bad_names():
+    from src.modules.voice.agent import to_openai_tools
+
+    tools = to_openai_tools([
+        {"name": "click_element", "description": "d", "parameters": {"type": "OBJECT", "properties": {"ref": {"type": "STRING"}}}},
+        {"name": "bad name!", "description": "x"},
+    ])
+    assert len(tools) == 1
+    assert tools[0]["function"]["parameters"]["properties"]["ref"]["type"] == "string"
+    assert tools[0]["function"]["parameters"]["type"] == "object"

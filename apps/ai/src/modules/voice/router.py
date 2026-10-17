@@ -55,6 +55,20 @@ class AuditEvent(BaseModel):
     detail: str = Field(default="", max_length=200)
 
 
+class StepMessage(BaseModel):
+    role: str = Field(pattern=r"^(user|assistant|tool)$")
+    content: str | None = Field(default=None, max_length=6000)
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = Field(default=None, max_length=64)
+
+
+class StepRequest(BaseModel):
+    messages: list[StepMessage] = Field(min_length=1, max_length=40)
+    tools: list[dict] = Field(default_factory=list, max_length=48)
+    page: str = Field(default="", max_length=200)
+    portal: str = Field(default="student", max_length=24)
+
+
 class PlanRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=200)
     subject: str = Field(default="", max_length=60)
@@ -184,3 +198,32 @@ async def agent_audit(body: AuditEvent, auth: AuthDep):
         body.page, body.target, body.detail,
     )
     return {"recorded": True}
+
+
+@router.post("/agent/step")
+async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
+    """One step of the typed (text) agent loop on Qwen. Same tools and persona as voice."""
+    if auth.school_id is None:
+        raise ForbiddenError("School context required")
+    if not await limiter.allow(f"voice-step:{auth.user_id}", limit=90):
+        raise AppError("Slow down a little", code="rate_limited", status_code=429)
+    student = body.portal == "student"
+    context_block, grade_band = await _student_context(auth, bearer)
+    extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
+    if context_block:
+        extra += "\nUser context (authoritative):\n" + context_block[:1200]
+    messages = []
+    for m in body.messages:
+        item: dict = {"role": m.role, "content": m.content or ""}
+        if m.tool_calls:
+            item["tool_calls"] = m.tool_calls[:6]
+        if m.role == "tool":
+            item["tool_call_id"] = m.tool_call_id or ""
+        messages.append(item)
+    result = await agent.agent_step(
+        messages=messages, declarations=body.tools, system_extra=extra,
+        grade_band=grade_band if student else None, student=student,
+    )
+    logger.info("agent_step user=%s portal=%s provider=%s tool_calls=%d", auth.user_id, body.portal,
+                result["provider"], len(result["message"].get("tool_calls") or []))
+    return result
