@@ -183,7 +183,8 @@ async def agent_text(body: TextRequest, auth: AuthDep, bearer: BearerToken):
     context_block, grade_band = await _student_context(auth, bearer)
     try:
         reply = await agent.text_answer(
-            get_llm(), message=body.message, context_block=context_block, grade_band=grade_band, page=body.page
+            get_llm(), message=body.message, context_block=context_block, grade_band=grade_band, page=body.page,
+            student=auth.role == "STUDENT",
         )
     except Exception as exc:
         logger.warning("text fallback failed: %s", type(exc).__name__)
