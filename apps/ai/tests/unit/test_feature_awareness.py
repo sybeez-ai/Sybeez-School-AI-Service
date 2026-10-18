@@ -77,8 +77,9 @@ def test_ai_switch_open_when_on_or_core_down(monkeypatch):
 
 
 def test_gate_raises_403_feature_disabled(monkeypatch):
-    import pytest
     from types import SimpleNamespace
+
+    import pytest
 
     from src.api import router as R
     from src.core.exceptions import ForbiddenError

@@ -19,7 +19,6 @@ from src.modules.translate.router import router as translate_router
 from src.modules.voice.router import router as voice_router
 
 
-
 async def ai_feature_gate(request: Request) -> None:
     """Refuse every AI endpoint when the platform or the school has switched the AI assistant off."""
     from src.core.exceptions import ForbiddenError
