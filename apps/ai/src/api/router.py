@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from starlette.requests import HTTPConnection
 
 from src.core.health import liveness, readiness
 from src.modules.assets.router import router as assets_router
@@ -18,7 +19,18 @@ from src.modules.translate.notice_router import router as notice_translate_route
 from src.modules.translate.router import router as translate_router
 from src.modules.voice.router import router as voice_router
 
-api_router = APIRouter()
+
+async def ai_feature_gate(request: HTTPConnection) -> None:
+    """Refuse every AI endpoint when the platform or the school has switched the AI assistant off."""
+    from src.core.exceptions import ForbiddenError
+    from src.modules.context.features import ai_switched_off
+
+    label = await ai_switched_off(getattr(request.state, "token", None))
+    if label:
+        raise ForbiddenError(f"{label} is turned off for your school.", code="feature_disabled")
+
+
+api_router = APIRouter(dependencies=[Depends(ai_feature_gate)])
 
 api_router.include_router(chat_router)
 api_router.include_router(conversations_router)
