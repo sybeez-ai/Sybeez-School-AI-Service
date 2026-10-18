@@ -18,6 +18,7 @@ from src.api.dependencies import AuthDep, BearerToken
 from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
+from src.modules.context.features import disabled_labels, prompt_block
 from src.modules.context.service import ContextService
 from src.modules.profile.router import profile_prompt_block
 from src.modules.voice import agent
@@ -135,9 +136,11 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     name = (response.json() or {}).get("name")
     if not name:
         raise UpstreamError("Voice provider returned no token")
-    (context_block, grade_band), profile_block = await asyncio.gather(
-        _student_context(auth, bearer), profile_prompt_block(auth)
+    (context_block, grade_band), profile_block, off = await asyncio.gather(
+        _student_context(auth, bearer), profile_prompt_block(auth), disabled_labels(bearer)
     )
+    if off:
+        context_block = (context_block + "\n" + prompt_block(off)).strip()
     prompt = build_system_prompt(
         context_block, grade_band if (not body or body.portal == "student") else None,
         (body.page if body else ""), (body.portal if body else "student"), profile_block,
@@ -211,10 +214,12 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
     if not await limiter.allow(f"voice-step:{auth.user_id}", limit=90):
         raise AppError("Slow down a little", code="rate_limited", status_code=429)
     student = body.portal == "student"
-    context_block, grade_band = await _student_context(auth, bearer)
+    (context_block, grade_band), off = await asyncio.gather(_student_context(auth, bearer), disabled_labels(bearer))
     extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
     if context_block:
         extra += "\nUser context (authoritative):\n" + context_block[:1200]
+    if off:
+        extra += "\n" + prompt_block(off)
     if student:
         extra += "\n" + (await profile_prompt_block(auth))[:900]
     messages = []
