@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import AuthContext, require_school
 from src.core.telemetry import track
+from src.modules.chat.persona import persona_system
 from src.modules.chat.schemas import ChatRequest, ChatResponse
 from src.modules.context.service import ContextService
 from src.modules.conversations.schemas import ConversationCreate
@@ -60,7 +61,7 @@ class ChatService:
         )
         recalled = await self.memory.recall(auth, student_id=learning.student.id, query=body.message)
 
-        system = load_prompt("system/ai_teacher.txt")
+        system = persona_system(load_prompt("system/ai_teacher.txt"), auth.role)
         teaching = load_prompt("teaching/explain.txt")
         user_prompt = (
             f"{teaching}\n\n"
@@ -117,7 +118,7 @@ class ChatService:
         retrieved = await self.retrieval.search(auth, query=body.message, subject_id=conv.subject_id)
         recalled = await self.memory.recall(auth, student_id=learning.student.id, query=body.message)
 
-        system = load_prompt("system/ai_teacher.txt")
+        system = persona_system(load_prompt("system/ai_teacher.txt"), auth.role)
         user_prompt = (
             f"{load_prompt('teaching/explain.txt')}\n\n"
             f"CONTEXT:\n{learning.as_prompt_block()}\n\n"
