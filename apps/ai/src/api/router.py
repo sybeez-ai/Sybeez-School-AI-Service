@@ -10,6 +10,7 @@ from src.modules.evaluation.router import router as evaluation_router
 from src.modules.homework_help.router import router as homework_help_router
 from src.modules.learning.router import router as learning_router
 from src.modules.mcq.router import router as mcq_router
+from src.modules.platform_assistant.router import router as platform_assistant_router
 from src.modules.practice.router import router as practice_router
 from src.modules.profile.router import router as profile_router
 from src.modules.reading.router import router as reading_router
@@ -47,6 +48,7 @@ api_router.include_router(notice_translate_router)
 api_router.include_router(reading_router)
 api_router.include_router(profile_router)
 api_router.include_router(assets_router)
+api_router.include_router(platform_assistant_router)
 
 
 @api_router.get("/health")
