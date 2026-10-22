@@ -97,7 +97,9 @@ async def student_profile(student_user_id: UUID, db: Annotated[AsyncSession, Dep
         raise ForbiddenError("Only a linked parent or teacher can read a student's profile")
     row = await _row(db, student_user_id, any_id=True)  # RLS hides everyone else's students
     if row is None:
-        raise NotFoundError("No learning profile for this student yet")
+        # Same as a student's own empty profile: nothing learned yet. RLS already hides other
+        # schools' and unlinked students, so this reveals no more than the old 404 did.
+        return logic.report(None)
     _audit(auth, "read", student_user_id)
     return logic.report(row.data)
 
