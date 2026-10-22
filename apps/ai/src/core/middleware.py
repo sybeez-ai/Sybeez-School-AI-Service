@@ -32,6 +32,15 @@ def request_timeout_for_path(path: str) -> float:
     return settings.request_timeout_seconds
 
 
+# Platform-team sessions carry no school. Only these stateless routes accept them.
+_SCHOOLLESS_PREFIXES = ("/api/v1/ai/platform-assistant/",)
+_PLATFORM_ROLES = {"PLATFORM_ADMIN", "PLATFORM_STAFF"}
+
+
+def _schoolless_allowed(path: str, role: str) -> bool:
+    return role in _PLATFORM_ROLES and normalize_path(path).startswith(_SCHOOLLESS_PREFIXES)
+
+
 def is_public_path(path: str, method: str) -> bool:
     if method == "OPTIONS":
         return True
@@ -227,10 +236,13 @@ class SecurityMiddleware:
         except AppError as exc:
             logger.warning("authentication failed", extra={"path": path, "status": exc.status_code})
             return exc.status_code, error_body(exc.code, exc.message), None
-        if not isinstance(ctx, AuthContext) or ctx.school_id is None:
+        if not isinstance(ctx, AuthContext):
+            return 403, error_body("forbidden", "School context required"), None
+        if ctx.school_id is None and not _schoolless_allowed(path, ctx.role):
             return 403, error_body("forbidden", "School context required"), None
 
-        bindings.append((school_id_var, school_id_var.set(str(ctx.school_id))))
+        if ctx.school_id is not None:
+            bindings.append((school_id_var, school_id_var.set(str(ctx.school_id))))
         bindings.append((user_id_var, user_id_var.set(str(ctx.user_id))))
         if not await limiter.allow(f"user:{ctx.user_id}"):
             logger.warning("user rate limit exceeded", extra={"path": path, "status": 429})
