@@ -94,9 +94,13 @@ class MemoryStore:
 class FakeContext:
     def __init__(self, learning: AuthorizedLearningContext):
         self.learning = learning
+        self.parent_children = {learning.student.id}
 
     async def for_user(self, auth, bearer_token=None, subject_id=None):
         return self.learning
+
+    async def parent_child_ids(self, auth, bearer_token=None):
+        return set(self.parent_children)
 
 
 class NullVoice:
@@ -613,3 +617,34 @@ def test_request_timeout_covers_teacher_streams():
     assert request_timeout_for_path("/api/v1/ai/teacher/sessions/abc/stream") == settings.stream_timeout_seconds
     assert request_timeout_for_path("/api/v1/ai/chat") == settings.stream_timeout_seconds
     assert request_timeout_for_path("/api/v1/ai/learning/summary") == settings.request_timeout_seconds
+
+
+@pytest.mark.asyncio
+async def test_unlinked_parent_loses_past_lessons():
+    """P0: the stored guardian snapshot must not outlive the live Core link."""
+    service = _service()
+    student = _auth(USER_A)
+    first = await service.start(student, _body("Teach me fractions"), None)
+    parent = _auth(PARENT, "PARENT")
+    assert [item.id for item in await service.list_sessions(parent)] == [first.session_id]
+    await service.get_session(parent, first.session_id)
+
+    service.context.parent_children = set()  # guardian unlinked in Core
+    assert PARENT in service.store.rows[first.session_id].guardian_user_ids  # snapshot is stale
+    assert await service.list_sessions(parent) == []
+    with pytest.raises(NotFoundError):
+        await service.get_session(parent, first.session_id)
+
+    # Teachers and the student are unaffected by the parent check.
+    await service.get_session(student, first.session_id)
+    await service.get_session(_auth(TEACHER, "TEACHER"), first.session_id)
+
+
+@pytest.mark.asyncio
+async def test_parent_access_fails_closed_without_live_lookup():
+    service = _service()
+    first = await service.start(_auth(USER_A), _body("Teach me fractions"), None)
+    service.context = type("Bare", (), {})()
+    assert await service.list_sessions(_auth(PARENT, "PARENT")) == []
+    with pytest.raises(NotFoundError):
+        await service.get_session(_auth(PARENT, "PARENT"), first.session_id)

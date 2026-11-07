@@ -139,9 +139,25 @@ class TeacherService:
         async for event in pace_events(turn.events, pace=pace):
             yield event
 
-    async def list_sessions(self, auth: AuthContext) -> list[SessionSummary]:
+    async def _live_parent_children(self, auth: AuthContext, bearer: str | None) -> set[UUID] | None:
+        """For parents, the children Core links them to now (None for other roles).
+
+        The stored guardian_user_ids snapshot is only refreshed on student turns,
+        so an unlinked parent would keep access to old lessons without this check.
+        """
+        if auth.role != "PARENT":
+            return None
+        fetch = getattr(self.context, "parent_child_ids", None)
+        if fetch is None:
+            return set()
+        return await fetch(auth, bearer_token=bearer)
+
+    async def list_sessions(self, auth: AuthContext, bearer: str | None = None) -> list[SessionSummary]:
         require_school(auth)
         rows = await self.store.list(auth)
+        live = await self._live_parent_children(auth, bearer)
+        if live is not None:
+            rows = [row for row in rows if row.student_id in live]
         return [
             SessionSummary(
                 id=row.id,
@@ -156,10 +172,13 @@ class TeacherService:
             for row in rows
         ]
 
-    async def get_session(self, auth: AuthContext, session_id: UUID) -> SessionDetail:
+    async def get_session(self, auth: AuthContext, session_id: UUID, bearer: str | None = None) -> SessionDetail:
         require_school(auth)
         record = await self.store.get(auth, session_id)
         if record is None:
+            raise NotFoundError("Session not found")
+        live = await self._live_parent_children(auth, bearer)
+        if live is not None and record.student_id not in live:
             raise NotFoundError("Session not found")
         return self.to_detail(auth, record)
 

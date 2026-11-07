@@ -81,6 +81,34 @@ class CoreClient:
                 return self._minimal(user_id, school_id)
             raise UpstreamError("Core API unreachable") from exc
 
+    async def parent_child_ids(self, *, bearer_token: str | None) -> set[UUID]:
+        """Student ids the calling parent is linked to in Core right now.
+
+        Fails closed: any error returns an empty set so a revoked or unverifiable
+        guardian link never grants lesson access.
+        """
+        if not bearer_token:
+            return set()
+        url = f"{self.settings.core_api_url.rstrip('/')}/api/v1/exams/parent/children"
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.upstream_timeout_seconds) as client:
+                resp = await client.get(url, headers=self._headers(bearer_token))
+            if resp.status_code >= 400:
+                track("core_parent_children_failed", status=resp.status_code)
+                return set()
+            data = resp.json()
+            rows = data.get("data", data) if isinstance(data, dict) else data
+            found: set[UUID] = set()
+            for row in rows or []:
+                try:
+                    found.add(UUID(str(row.get("student_id"))))
+                except (AttributeError, TypeError, ValueError):
+                    continue
+            return found
+        except (httpx.HTTPError, ValueError) as exc:
+            track("core_parent_children_unreachable", error_type=type(exc).__name__)
+            return set()
+
     def _minimal(self, user_id: UUID, school_id: UUID) -> AuthorizedLearningContext:
         return AuthorizedLearningContext(
             student=StudentContext(id=user_id, class_id=None),
