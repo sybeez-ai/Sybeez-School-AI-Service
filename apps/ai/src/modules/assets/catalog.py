@@ -11,6 +11,10 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
+from src.modules.teacher.images import image_ok_for_class
+
+MODEL_UNAVAILABLE = "3D not available for this topic"
+
 _MANIFEST = Path(__file__).with_name("manifest.json")
 _WORD = re.compile(r"[a-z0-9]+")
 _STOP = {"the", "of", "a", "an", "and", "in", "to", "is", "what", "why", "how", "do", "we", "have", "are", "about", "explain", "me"}
@@ -77,6 +81,29 @@ def library(*, subject: str = "", class_no: int | None = None) -> list[dict]:
     return sorted(items, key=lambda i: (i["subject"], i["title"]))
 
 
+def _image_row(img: dict) -> dict:
+    return {
+        **{key: img[key] for key in ("url", "caption", "alt", "license", "license_url", "author", "source") if key in img},
+        "regions": clean_regions(img.get("regions")),
+    }
+
+
+def _model_fields(topic: dict, manifest: dict) -> dict:
+    """A 3D model is returned only when this topic has its own model. Never borrow another topic's."""
+    model = manifest["models"].get(topic.get("model3d") or "")
+    if model and topic.get("model3d"):
+        return {
+            "model3d": {"name": topic["model3d"], "url": model["url"], "license": model["license"]},
+            "model3d_status": "ready",
+            "model3d_message": None,
+        }
+    return {
+        "model3d": None,
+        "model3d_status": "unavailable",
+        "model3d_message": MODEL_UNAVAILABLE,
+    }
+
+
 def lookup(query: str, *, subject: str = "", class_no: int | None = None, limit: int = 3) -> dict:
     """Best topic match; always returns a safe answer (placeholder when nothing matches)."""
     manifest = load_manifest()
@@ -93,10 +120,23 @@ def lookup(query: str, *, subject: str = "", class_no: int | None = None, limit:
             ranked.append((s, topic))
     ranked.sort(key=lambda x: -x[0])
     if not ranked:
-        return {"found": False, "source": "placeholder", "query": query[:120], "images": [], "model3d": None, "key_terms": [],
-                "note": "No curated asset for this topic yet; draw it on the board and describe it in words."}
+        return {
+            "found": False,
+            "source": "placeholder",
+            "query": query[:120],
+            "images": [],
+            "model3d": None,
+            "model3d_status": "unavailable",
+            "model3d_message": MODEL_UNAVAILABLE,
+            "key_terms": [],
+            "note": "No curated asset for this topic yet; draw it on the board and describe it in words.",
+        }
     score, topic = ranked[0]
-    model = manifest["models"].get(topic.get("model3d") or "")
+    images = [
+        _image_row(img)
+        for img in topic.get("images") or []
+        if image_ok_for_class(img, class_no)
+    ][:limit]
     return {
         "found": True,
         "source": "s3",
@@ -106,12 +146,6 @@ def lookup(query: str, *, subject: str = "", class_no: int | None = None, limit:
         "subject": topic["subject"],
         "classes": topic.get("classes", []),
         "key_terms": topic.get("key_terms", []),
-        "images": [
-            {
-                **{k: img[k] for k in ("url", "caption", "alt", "license", "license_url", "author", "source")},
-                "regions": clean_regions(img.get("regions")),
-            }
-            for img in topic["images"][:limit]
-        ],
-        "model3d": ({"name": topic["model3d"], "url": model["url"], "license": model["license"]} if model else None),
+        "images": images,
+        **_model_fields(topic, manifest),
     }

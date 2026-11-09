@@ -51,6 +51,42 @@ def normalise_answer(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", (value or "").lower())).strip()
 
 
+_META_WORDS = frozenset(
+    {
+        "please", "again", "that", "this", "more", "topic", "lesson", "teach", "explain",
+        "about", "what", "show", "start", "learn", "grade", "level", "board", "picture",
+        "view", "simple", "then", "with", "your", "from", "into", "onto",
+    }
+)
+
+
+def content_words(text: str) -> set[str]:
+    return {
+        word
+        for word in re.findall(r"[a-z0-9]+", (text or "").lower())
+        if len(word) >= 4 and word not in _META_WORDS
+    }
+
+
+_ASKS_TO_LEARN = re.compile(r"\b(teach|explain|lesson|what is|what's|show me|learn about)\b", re.IGNORECASE)
+
+
+def asks_for_new_topic(message: str, plan: dict | None) -> bool:
+    """True when the student asks to learn a different lesson from the one on the board.
+
+    A short answer such as "blue" or "2" is not a new topic, even if it shares no words
+    with the current title.
+    """
+    if not _ASKS_TO_LEARN.search(message or ""):
+        return False
+    topic = str((plan or {}).get("topic") or "")
+    new_words = content_words(message)
+    old_words = content_words(topic)
+    if not new_words or not old_words:
+        return False
+    return new_words.isdisjoint(old_words)
+
+
 def answer_is_correct(expected: str, given: str) -> bool:
     exp = normalise_answer(expected)
     got = normalise_answer(given)
@@ -80,6 +116,10 @@ def _step_prompt(state: TeacherState, plan: LessonPlan, step, reexplain: bool) -
         f"Explanation to base this on: {step.explanation}\n"
         f"Check question: {step.check_prompt}\n"
         f"{pace} Return a step script JSON. page_id may be \"current\". "
+        "chat is 4 to 6 short friendly sentences for this grade: what the idea means, "
+        "why it matters, one everyday example, then the check question. Not a one-line answer, "
+        "and not an essay. If the topic is new, the first action is new_page and its title is the "
+        "lesson topic. Board labels stay under 6 words. "
         "Include narration. Do not reveal expected_answer inside chat."
     )
 
@@ -103,7 +143,9 @@ def build_teacher_graph(writer: LessonWriter):
             f"Grade band: {state.get('grade_band')}\n"
             f"Student request: {state.get('student_message')}\n"
             f"Context:\n{state.get('context_block') or 'none'}\n"
-            "Plan 3 short steps with goals, prerequisites, and a check question each. Return JSON only."
+            "Plan exactly 3 short steps. Each explanation is 2 or 3 friendly sentences plus one "
+            "everyday example, and each step has a check question. The topic field is the board heading. "
+            "Return JSON only."
         )
         try:
             plan = await writer.write_plan(user=user)
@@ -269,6 +311,8 @@ def build_teacher_graph(writer: LessonWriter):
         if state.get("safety_redirect"):
             return "redirect"
         finished = state.get("phase") == "summarise" or state.get("status") == "completed"
+        if asks_for_new_topic(state.get("student_message") or "", state.get("plan")):
+            return "plan"
         if not state.get("has_plan") or finished:
             return "plan"
         if state.get("awaiting_check"):
