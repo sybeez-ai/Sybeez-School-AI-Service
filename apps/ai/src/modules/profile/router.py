@@ -25,6 +25,15 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 STYLE = Literal["visual", "worked_examples", "stories", "step_by_step"]
 
 
+def parent_still_linked(row, live_student_ids: set[UUID]) -> bool:
+    """The profile's school student id must be one Core currently links to this parent.
+
+    A missing student id fails closed: we cannot prove the link, so the profile stays hidden.
+    """
+    student_id = getattr(row, "student_id", None)
+    return isinstance(student_id, UUID) and student_id in live_student_ids
+
+
 class OutcomeEvent(BaseModel):
     kind: Literal["outcome", "speaking", "reading"]
     topic: str = Field(default="", max_length=120)
@@ -92,11 +101,22 @@ async def my_profile(db: Annotated[AsyncSession, Depends(get_db)], auth: AuthDep
 
 
 @router.get("/student/{student_user_id}")
-async def student_profile(student_user_id: UUID, db: Annotated[AsyncSession, Depends(get_db)], auth: AuthDep):
+async def student_profile(
+    student_user_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    auth: AuthDep,
+    bearer: BearerToken,
+):
     if auth.role not in {"PARENT", "TEACHER"}:
         raise ForbiddenError("Only a linked parent or teacher can read a student's profile")
     row = await _row(db, student_user_id, any_id=True)  # RLS hides everyone else's students
-    if row is None:
+    if auth.role == "PARENT":
+        # The stored guardian list is only refreshed on student activity. Recheck the live
+        # link, the same way lesson history does, so an unlinked parent does not keep reading.
+        live = await ContextService().parent_child_ids(auth, bearer_token=bearer)
+        if row is None or not parent_still_linked(row, live):
+            return logic.report(None)
+    elif row is None:
         # Same as a student's own empty profile: nothing learned yet. RLS already hides other
         # schools' and unlinked students, so this reveals no more than the old 404 did.
         return logic.report(None)

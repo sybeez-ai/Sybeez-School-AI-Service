@@ -101,6 +101,15 @@ class Settings(BaseSettings):
     teacher_rate_limit_per_minute: int = 20
     teacher_image_hosts: str = "upload.wikimedia.org,commons.wikimedia.org"
 
+    # Daily caps for paid calls. 0 turns a cap off. Counters live in the existing
+    # rate-limit store (Redis in production, this process otherwise) for 24 hours.
+    # Voice is the expensive one: each session is at most 15 minutes of live audio.
+    voice_sessions_per_user_per_day: int = 8
+    voice_sessions_per_school_per_day: int = 200
+    # Text calls are cheap next to live voice. 1200 covers a teacher marking a few classes.
+    model_calls_per_user_per_day: int = 1200
+    model_calls_per_school_per_day: int = 20000
+
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_chat_model: str = "deepseek-chat"

@@ -18,6 +18,7 @@ import pytest
 
 from src.core.rate_limit import limiter
 from src.core.security import CognitoVerifier, reset_verifier
+from src.modules.context.core_client import reset_parent_child_cache
 from tests.security.jwks import PUBLIC_JWK
 
 
@@ -29,6 +30,8 @@ def _jwks_and_limits(monkeypatch):
     monkeypatch.setattr(CognitoVerifier, "_fetch_jwks_document", fake_fetch)
     reset_verifier()
     limiter.reset()
+    reset_parent_child_cache()
     yield
     limiter.reset()
+    reset_parent_child_cache()
     reset_verifier()

@@ -11,7 +11,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.api.dependencies import AuthDep
-from src.core.exceptions import AppError, ForbiddenError
+from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
 from src.providers.llm import get_llm, guarded_complete
 
@@ -58,5 +58,8 @@ async def platform_chat(body: PlatformChatRequest, auth: AuthDep) -> PlatformCha
         + (f"=== CONVERSATION ===\n{history}\n\n" if history else "")
         + f"user: {body.message}\n\nRespond as the platform AI assistant."
     )
-    reply = await guarded_complete(get_llm(), system=SYSTEM, user=user)
+    try:
+        reply = await guarded_complete(get_llm(), system=SYSTEM, user=user)
+    except UpstreamError:
+        reply = "The AI assistant could not answer just now. Please try again in a moment."
     return PlatformChatResponse(reply=reply)

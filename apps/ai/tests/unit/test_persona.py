@@ -1,7 +1,18 @@
 import asyncio
 
-from src.modules.chat.persona import persona_system
+from src.modules.chat.persona import assistant_name, busy_reply, conversation_title, persona_system, reply_cue
 from src.modules.voice import agent
+
+
+def test_names_match_the_portal():
+    assert assistant_name("STUDENT") == "AI teacher"
+    assert assistant_name("PARENT") == "AI assistant"
+    assert conversation_title("STUDENT") == "AI Teacher"
+    assert conversation_title("TEACHER") == "AI assistant"
+    assert "AI teacher" in reply_cue("STUDENT")
+    assert 'Never call yourself "AI teacher"' in reply_cue("SCHOOL_ADMIN")
+    assert "AI assistant" in busy_reply("PARENT") and "AI teacher" not in busy_reply("PARENT")
+    assert "AI teacher" in busy_reply("STUDENT")
 
 
 def test_students_keep_the_ai_teacher_persona():

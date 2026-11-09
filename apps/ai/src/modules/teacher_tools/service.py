@@ -74,7 +74,7 @@ class GradeResponse(BaseModel):
 
 class NotConfigured(AppError):
     def __init__(self) -> None:
-        super().__init__("AI teacher tools are not configured", code="ai_not_configured", status_code=503)
+        super().__init__("The AI assistant is not configured yet", code="ai_not_configured", status_code=503)
 
 
 def _llm():

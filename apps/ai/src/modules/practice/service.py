@@ -1,12 +1,16 @@
 import json
+import logging
 import re
 from uuid import uuid4
 
+from src.core.exceptions import UpstreamError
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.practice.schemas import PracticeQuestion, PracticeRequest, PracticeResponse
 from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
+
+logger = logging.getLogger("sybeez.ai.practice")
 
 
 class PracticeService:
@@ -27,7 +31,11 @@ class PracticeService:
             f"Topic: {topic}\nDifficulty: {body.difficulty.value}\nCount: {body.count}\n\n"
             "Return JSON array of objects with keys: prompt, question_type, hint."
         )
-        raw = await guarded_complete(self.llm, system=system, user=user)
+        try:
+            raw = await guarded_complete(self.llm, system=system, user=user)
+        except UpstreamError:
+            logger.warning("practice model unavailable")
+            raw = ""
         questions = self._parse(raw, body.count)
         return PracticeResponse(topic=topic or "General", difficulty=body.difficulty.value, questions=questions)
 

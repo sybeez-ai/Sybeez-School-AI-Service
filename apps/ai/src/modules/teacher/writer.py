@@ -7,6 +7,7 @@ import re
 from pydantic import ValidationError
 
 from src.core.config import get_settings
+from src.core.exceptions import UpstreamError
 from src.modules.teacher.protocol import LessonPlan, ProtocolError, StepScript, prepare_actions
 from src.shared.utils import load_prompt
 
@@ -42,7 +43,12 @@ class LessonWriter:
         prompt = user
         last = "invalid"
         for _ in range(max(1, self.retries)):
-            raw = await self.llm.complete(system=self.system(), user=prompt)
+            try:
+                raw = await self.llm.complete(system=self.system(), user=prompt)
+            except UpstreamError:
+                # Every configured provider already failed. Retrying only burns time and money.
+                logger.warning("board model unavailable")
+                raise ProtocolError("model unavailable") from None
             try:
                 parsed = model.model_validate(extract_json(raw))
                 if isinstance(parsed, StepScript):

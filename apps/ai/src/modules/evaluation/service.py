@@ -1,11 +1,15 @@
 import json
+import logging
 import re
 
+from src.core.exceptions import UpstreamError
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.evaluation.schemas import EvaluationRequest, EvaluationResponse
 from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
+
+logger = logging.getLogger("sybeez.ai.evaluation")
 
 
 class EvaluationService:
@@ -29,7 +33,18 @@ class EvaluationService:
             'Return JSON: {"correct": bool, "score": 0-1, "feedback": str, '
             '"concepts_demonstrated": [], "concepts_missing": []}'
         )
-        raw = await guarded_complete(self.llm, system=system, user=user)
+        try:
+            raw = await guarded_complete(self.llm, system=system, user=user)
+        except UpstreamError:
+            # Do not guess "correct" from the length of the answer when the model is down.
+            logger.warning("evaluation model unavailable")
+            return EvaluationResponse(
+                correct=False,
+                score=0.0,
+                feedback="That answer could not be checked just now. Please try again.",
+                concepts_demonstrated=[],
+                concepts_missing=[],
+            )
         parsed = self._parse(raw, body.answer)
         return parsed
 

@@ -2,9 +2,10 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import UpstreamError
 from src.core.security import AuthContext, require_school
 from src.core.telemetry import track
-from src.modules.chat.persona import persona_system
+from src.modules.chat.persona import busy_reply, conversation_title, persona_system, reply_cue
 from src.modules.chat.schemas import ChatRequest, ChatResponse
 from src.modules.context.service import ContextService
 from src.modules.conversations.schemas import ConversationCreate
@@ -42,7 +43,10 @@ class ChatService:
         else:
             conv = await self.conversations.create(
                 auth,
-                ConversationCreate(subject_id=body.subject_id or (learning.current_learning.subject_id if learning.current_learning else None), title="AI Teacher"),
+                ConversationCreate(
+                    subject_id=body.subject_id or (learning.current_learning.subject_id if learning.current_learning else None),
+                    title=conversation_title(auth.role),
+                ),
                 student_id=learning.student.id,
             )
 
@@ -69,10 +73,14 @@ class ChatService:
             f"=== RETRIEVED KNOWLEDGE ===\n{retrieved.as_prompt_block()}\n\n"
             f"=== AI MEMORY ===\n{recalled.as_prompt_block()}\n\n"
             f"=== CONVERSATION ===\n{history_text}\n\n"
-            f"Respond as the AI Teacher."
+            f"{reply_cue(auth.role)}"
         )
 
-        reply = await guarded_complete(self.llm, system=system, user=user_prompt)
+        try:
+            reply = await guarded_complete(self.llm, system=system, user=user_prompt)
+        except UpstreamError:
+            logger.warning("chat model unavailable")
+            reply = busy_reply(auth.role)
         assistant = await self.conversations.append(
             auth=auth,
             conversation_id=conv.id,
@@ -105,7 +113,7 @@ class ChatService:
         else:
             conv = await self.conversations.create(
                 auth,
-                ConversationCreate(subject_id=body.subject_id, title="AI Teacher"),
+                ConversationCreate(subject_id=body.subject_id, title=conversation_title(auth.role)),
                 student_id=learning.student.id,
             )
 
@@ -124,7 +132,7 @@ class ChatService:
             f"CONTEXT:\n{learning.as_prompt_block()}\n\n"
             f"KNOWLEDGE:\n{retrieved.as_prompt_block()}\n\n"
             f"MEMORY:\n{recalled.as_prompt_block()}\n\n"
-            f"HISTORY:\n{history_text}"
+            f"HISTORY:\n{history_text}\n\n{reply_cue(auth.role)}"
         )
 
         parts: list[str] = []
@@ -135,7 +143,15 @@ class ChatService:
                 yield {"type": "token", "content": token}
         except Exception:
             logger.exception("llm stream failed")
-            yield {"type": "error", "message": "The teacher could not finish this response"}
+            if parts:
+                yield {"type": "error", "message": busy_reply(auth.role)}
+                return
+            fallback = busy_reply(auth.role)
+            msg = await self.conversations.append(
+                auth=auth, conversation_id=conv.id, role=MessageRole.ASSISTANT, content=fallback
+            )
+            yield {"type": "token", "content": fallback}
+            yield {"type": "done", "message_id": str(msg.id), "conversation_id": str(conv.id)}
             return
 
         full = "".join(parts)

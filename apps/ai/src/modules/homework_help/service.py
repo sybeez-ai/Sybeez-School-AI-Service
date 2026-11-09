@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from src.core.exceptions import AppError
+from src.core.exceptions import AppError, UpstreamError
 from src.modules.mcq.service import extract_json
 from src.providers.llm import EchoLLM, get_llm, guarded_complete
 
@@ -68,7 +68,11 @@ def _prompt(body: HelpRequest, extra: str = "") -> str:
 
 
 async def gives_answer(llm, question: str, reply: str) -> bool:
-    raw = await guarded_complete(llm, system=CHECK_SYSTEM, user=f"QUESTION:\n{question}\n\nTUTOR REPLY:\n{reply}")
+    try:
+        raw = await guarded_complete(llm, system=CHECK_SYSTEM, user=f"QUESTION:\n{question}\n\nTUTOR REPLY:\n{reply}")
+    except UpstreamError:
+        # Unsure counts as unsafe: hold the reply back rather than reveal an answer.
+        return True
     data = extract_json(raw)
     # Unsure counts as unsafe: we would rather hold a reply back than reveal an answer.
     return not (isinstance(data, dict) and data.get("gives_final_answer") is False)
@@ -78,10 +82,13 @@ async def help_student(body: HelpRequest) -> HelpResponse:
     llm = _llm()
     held = False
     extra = ""
-    for _ in range(2):
-        reply = (await guarded_complete(llm, system=TEACH_SYSTEM, user=_prompt(body, extra))).strip()[:900]
-        if reply and not await gives_answer(llm, body.question, reply):
-            return HelpResponse(reply=reply, held_back_answer=held)
+    try:
+        for _ in range(2):
+            reply = (await guarded_complete(llm, system=TEACH_SYSTEM, user=_prompt(body, extra))).strip()[:900]
+            if reply and not await gives_answer(llm, body.question, reply):
+                return HelpResponse(reply=reply, held_back_answer=held)
+            held = True
+            extra = "Your last reply gave away too much. Give only a smaller hint and a question. No answer."
+    except UpstreamError:
         held = True
-        extra = "Your last reply gave away too much. Give only a smaller hint and a question. No answer."
     return HelpResponse(reply=FALLBACK.get(body.language, FALLBACK["English"]), held_back_answer=True)
