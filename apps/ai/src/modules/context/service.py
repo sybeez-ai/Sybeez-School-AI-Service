@@ -34,3 +34,8 @@ class ContextService:
             )
             raise ForbiddenError("School context mismatch")
         return result
+
+    async def parent_child_ids(self, auth: AuthContext, *, bearer_token: str | None = None) -> set[UUID]:
+        """Children Core links this parent to right now (empty on any failure)."""
+        require_school(auth)
+        return await self.core.parent_child_ids(bearer_token=bearer_token)

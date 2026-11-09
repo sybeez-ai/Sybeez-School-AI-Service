@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import AuthContext, require_school
+from src.modules.chat.persona import is_student
 from src.modules.context.service import ContextService
 from src.modules.conversations.service import ConversationService
 from src.modules.learning.schemas import LearningSummary
@@ -26,5 +27,13 @@ class LearningService:
             current_topic=topic,
             memory_highlights=[m.content for m in recalled.items[:5]],
             recent_conversation_ids=[c.id for c in convs[:5]],
-            suggested_next=f"Review {topic} with a short practice set" if topic else "Start a new AI Teacher conversation",
+            suggested_next=(
+                f"Review {topic} with a short practice set"
+                if topic
+                else (
+                    "Start a new AI Teacher conversation"
+                    if is_student(auth.role)
+                    else "Start a new AI assistant conversation"
+                )
+            ),
         )

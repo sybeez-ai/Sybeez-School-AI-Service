@@ -93,6 +93,8 @@ def test_request_timeout(monkeypatch):
         await asyncio.sleep(1)
 
     monkeypatch.setattr(get_settings(), "request_timeout_seconds", 0.05)
+    # Practice is a model route, so its cap is the stream timeout unless that is lower.
+    monkeypatch.setattr(get_settings(), "stream_timeout_seconds", 0.05)
     monkeypatch.setattr("src.modules.practice.router.PracticeService.generate", slow)
     response = client.post("/api/v1/ai/practice", headers=bearer(mint()), json={"count": 1})
     assert response.status_code == 504

@@ -15,9 +15,11 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.api.dependencies import AuthDep, BearerToken
+from src.core.budget import DAILY_LIMIT_MESSAGE, allow_voice
 from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
+from src.modules.chat.persona import busy_reply
 from src.modules.context.features import disabled_labels, prompt_block
 from src.modules.context.service import ContextService
 from src.modules.profile.router import profile_prompt_block
@@ -105,6 +107,8 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
         raise AppError("Voice is not configured", code="voice_unavailable", status_code=503)
     if not await limiter.allow(f"voice-mint:{auth.user_id}", limit=MINTS_PER_MINUTE):
         raise AppError("Too many voice sessions, try again shortly", code="rate_limited", status_code=429)
+    if not await allow_voice(auth):
+        raise AppError(DAILY_LIMIT_MESSAGE, code="rate_limited", status_code=429)
     model = settings.gemini_live_model
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=SESSION_MINUTES)
@@ -188,7 +192,7 @@ async def agent_text(body: TextRequest, auth: AuthDep, bearer: BearerToken):
         )
     except Exception as exc:
         logger.warning("text fallback failed: %s", type(exc).__name__)
-        raise UpstreamError("Teacher is busy, please try again") from None
+        return {"reply": busy_reply(auth.role)}
     return {"reply": reply}
 
 
@@ -231,10 +235,18 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
         if m.role == "tool":
             item["tool_call_id"] = m.tool_call_id or ""
         messages.append(item)
-    result = await agent.agent_step(
-        messages=messages, declarations=body.tools, system_extra=extra,
-        grade_band=grade_band if student else None, student=student,
-    )
+    try:
+        result = await agent.agent_step(
+            messages=messages, declarations=body.tools, system_extra=extra,
+            grade_band=grade_band if student else None, student=student,
+        )
+    except UpstreamError:
+        logger.warning("agent step unavailable")
+        result = {
+            "message": {"role": "assistant", "content": busy_reply(auth.role)},
+            "provider": "fallback",
+            "model": "",
+        }
     logger.info("agent_step user=%s portal=%s provider=%s tool_calls=%d", auth.user_id, body.portal,
                 result["provider"], len(result["message"].get("tool_calls") or []))
     return result

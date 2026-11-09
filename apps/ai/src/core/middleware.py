@@ -3,6 +3,7 @@ import logging
 import time
 import uuid
 
+from src.core.budget import DAILY_LIMIT_MESSAGE, allow_model
 from src.core.config import get_settings
 from src.core.exceptions import AppError, error_body
 from src.core.rate_limit import limiter
@@ -23,12 +24,42 @@ def normalize_path(path: str) -> str:
     return path.rstrip("/") or "/"
 
 
+# Model calls wait on the provider (often longer than a plain JSON read). Lesson and chat
+# streams already use the stream cap. These routes do too, so a 60s model call is not cut
+# off at the 30s request cap. Voice token minting stays on the short cap.
+_SLOW_MODEL_PREFIXES = (
+    "/api/v1/ai/practice",
+    "/api/v1/ai/homework-help",
+    "/api/v1/ai/mcq",
+    "/api/v1/ai/evaluation",
+    "/api/v1/ai/teacher-tools",
+    "/api/v1/ai/translate",
+    "/api/v1/ai/platform-assistant",
+    "/api/v1/ai/voice/agent/plan",
+    "/api/v1/ai/voice/agent/text",
+    "/api/v1/ai/voice/agent/step",
+)
+
+# Daily model budget. Lesson turns are counted in TeacherService so the live socket is included.
+# Voice mints are counted in those handlers, after we know voice is configured.
+# Audit events are not model calls.
+_DAILY_MODEL_PREFIXES = _SLOW_MODEL_PREFIXES + ("/api/v1/ai/chat",)
+
+
+def _has_prefix(path: str, prefixes: tuple[str, ...]) -> bool:
+    return any(path == prefix or path.startswith(prefix + "/") for prefix in prefixes)
+
+
 def request_timeout_for_path(path: str) -> float:
-    """Lesson playback and chat streams outlive a normal JSON request."""
+    """Lesson playback, chat streams, and other model calls outlive a normal JSON request."""
     settings = get_settings()
     normalized = normalize_path(path)
     if normalized == "/api/v1/ai/chat" or normalized.startswith("/api/v1/ai/teacher"):
         return settings.stream_timeout_seconds
+    if _has_prefix(normalized, _SLOW_MODEL_PREFIXES):
+        # Two provider attempts (homework help, drafts) plus a little overhead, never past the stream cap.
+        needed = settings.llm_timeout_seconds * 2 + 15
+        return min(settings.stream_timeout_seconds, max(settings.request_timeout_seconds, needed))
     return settings.request_timeout_seconds
 
 
@@ -247,6 +278,12 @@ class SecurityMiddleware:
         if not await limiter.allow(f"user:{ctx.user_id}"):
             logger.warning("user rate limit exceeded", extra={"path": path, "status": 429})
             return 429, error_body("rate_limited", "Too many requests"), [(b"retry-after", b"60")]
+
+        if method == "POST" and _has_prefix(path, _DAILY_MODEL_PREFIXES):
+            over_daily = not await allow_model(ctx)
+            if over_daily:
+                logger.warning("daily AI limit reached", extra={"path": path, "status": 429})
+                return 429, error_body("rate_limited", DAILY_LIMIT_MESSAGE), [(b"retry-after", b"3600")]
 
         state = scope.setdefault("state", {})
         state["auth"] = ctx

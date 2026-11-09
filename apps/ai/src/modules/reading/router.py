@@ -11,6 +11,7 @@ from fastapi import APIRouter, Header
 from pydantic import BaseModel, Field
 
 from src.api.dependencies import AuthDep
+from src.core.budget import DAILY_LIMIT_MESSAGE, allow_voice
 from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
@@ -41,6 +42,8 @@ async def reading_session(
         raise AppError("Voice is not configured", code="voice_unavailable", status_code=503)
     if not await limiter.allow(f"reading-mint:{auth.user_id}", limit=4):
         raise AppError("Please wait a moment", code="rate_limited", status_code=429)
+    if not await allow_voice(auth):
+        raise AppError(DAILY_LIMIT_MESSAGE, code="rate_limited", status_code=429)
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=SESSION_MINUTES)
     token_body = {

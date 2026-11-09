@@ -22,10 +22,10 @@ class RateLimiter:
     def reset(self) -> None:
         self._hits.clear()
 
-    async def allow(self, key: str, *, limit: int | None = None) -> bool:
+    async def allow(self, key: str, *, limit: int | None = None, window: int | None = None) -> bool:
         settings = get_settings()
         cap = settings.rate_limit_per_minute if limit is None else limit
-        window = settings.rate_limit_window_seconds
+        window = settings.rate_limit_window_seconds if window is None else window
         if settings.rate_limit_backend.lower() == "redis":
             try:
                 return await self._redis_allow(key, cap, window)

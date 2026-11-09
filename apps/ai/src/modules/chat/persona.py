@@ -7,8 +7,33 @@ ASSISTANT_OVERRIDE = (
 )
 
 
+def is_student(role: str | None) -> bool:
+    return (role or "").upper() == "STUDENT"
+
+
+def assistant_name(role: str | None) -> str:
+    """What this person should hear the product call itself."""
+    return "AI teacher" if is_student(role) else "AI assistant"
+
+
+def conversation_title(role: str | None) -> str:
+    """Stored chat title. Students keep the existing 'AI Teacher' wording."""
+    return "AI Teacher" if is_student(role) else "AI assistant"
+
+
+def reply_cue(role: str | None) -> str:
+    name = assistant_name(role)
+    if is_student(role):
+        return f"Respond as the {name}."
+    return f'Respond as the {name}. Never call yourself "AI teacher".'
+
+
+def busy_reply(role: str | None) -> str:
+    return f"The {assistant_name(role)} could not answer just now. Please try again in a moment."
+
+
 def persona_system(system: str, role: str | None) -> str:
     """Append the adult-assistant persona for every role except STUDENT."""
-    if (role or "").upper() == "STUDENT":
+    if is_student(role):
         return system
     return system + ASSISTANT_OVERRIDE

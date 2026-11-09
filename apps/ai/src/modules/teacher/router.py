@@ -60,17 +60,22 @@ async def start_session(
 
 
 @router.get("/sessions", response_model=list[SessionSummary])
-async def list_sessions(auth: AuthDep, service: Annotated[TeacherService, Depends(get_teacher_service)]):
-    return await service.list_sessions(auth)
+async def list_sessions(
+    auth: AuthDep,
+    bearer: BearerToken,
+    service: Annotated[TeacherService, Depends(get_teacher_service)],
+):
+    return await service.list_sessions(auth, bearer)
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDetail)
 async def get_session(
     session_id: UUID,
     auth: AuthDep,
+    bearer: BearerToken,
     service: Annotated[TeacherService, Depends(get_teacher_service)],
 ):
-    return await service.get_session(auth, session_id)
+    return await service.get_session(auth, session_id, bearer)
 
 
 @router.post("/sessions/{session_id}/messages", response_model=None)

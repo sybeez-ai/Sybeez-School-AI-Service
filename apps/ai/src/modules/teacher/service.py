@@ -5,10 +5,12 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.budget import DAILY_LIMIT_MESSAGE, allow_model
 from src.core.config import get_settings
-from src.core.exceptions import ForbiddenError, NotFoundError, RateLimitError
+from src.core.exceptions import ForbiddenError, NotFoundError, RateLimitError, UpstreamError
 from src.core.rate_limit import limiter
 from src.core.security import AuthContext, require_school
+from src.modules.context.schemas import AuthorizedLearningContext, CurrentLearning, SchoolContext, StudentContext
 from src.modules.conversations.schemas import ConversationCreate
 from src.modules.conversations.service import ConversationService
 from src.modules.teacher.access import linked_ids, public_plan, role_can_write
@@ -88,7 +90,7 @@ class TeacherService:
     async def start(self, auth: AuthContext, body, bearer: str | None) -> TurnResponse:
         self._require_student(auth)
         await self._limit(auth)
-        learning = await self.context.for_user(auth, bearer_token=bearer, subject_id=body.subject_id)
+        learning, _fresh = await self._learning(auth, bearer, body.subject_id, None)
         now = utcnow()
         page_id = uuid4()
         subject_id = body.subject_id
@@ -126,10 +128,8 @@ class TeacherService:
         self._require_student(auth)
         await self._limit(auth)
         record = await self._owned(auth, session_id)
-        learning = await self.context.for_user(auth, bearer_token=bearer, subject_id=record.subject_id)
-        record.guardian_user_ids = linked_ids(learning.guardians)
-        record.teacher_user_ids = linked_ids(learning.teachers)
-        record.grade_band = normalise_grade_band(learning.grade_band)
+        learning, fresh = await self._learning(auth, bearer, record.subject_id, record)
+        self._apply_audience(record, learning, fresh)
         return await self._turn(auth, record, message, learning, is_new=False)
 
     async def stream(self, auth: AuthContext, session_id: UUID, message: str, bearer: str | None, *, pace: bool = False):
@@ -139,9 +139,25 @@ class TeacherService:
         async for event in pace_events(turn.events, pace=pace):
             yield event
 
-    async def list_sessions(self, auth: AuthContext) -> list[SessionSummary]:
+    async def _live_parent_children(self, auth: AuthContext, bearer: str | None) -> set[UUID] | None:
+        """For parents, the children Core links them to now (None for other roles).
+
+        The stored guardian_user_ids snapshot is only refreshed on student turns,
+        so an unlinked parent would keep access to old lessons without this check.
+        """
+        if auth.role != "PARENT":
+            return None
+        fetch = getattr(self.context, "parent_child_ids", None)
+        if fetch is None:
+            return set()
+        return await fetch(auth, bearer_token=bearer)
+
+    async def list_sessions(self, auth: AuthContext, bearer: str | None = None) -> list[SessionSummary]:
         require_school(auth)
         rows = await self.store.list(auth)
+        live = await self._live_parent_children(auth, bearer)
+        if live is not None:
+            rows = [row for row in rows if row.student_id in live]
         return [
             SessionSummary(
                 id=row.id,
@@ -156,19 +172,21 @@ class TeacherService:
             for row in rows
         ]
 
-    async def get_session(self, auth: AuthContext, session_id: UUID) -> SessionDetail:
+    async def get_session(self, auth: AuthContext, session_id: UUID, bearer: str | None = None) -> SessionDetail:
         require_school(auth)
         record = await self.store.get(auth, session_id)
         if record is None:
+            raise NotFoundError("Session not found")
+        live = await self._live_parent_children(auth, bearer)
+        if live is not None and record.student_id not in live:
             raise NotFoundError("Session not found")
         return self.to_detail(auth, record)
 
     async def resume(self, auth: AuthContext, session_id: UUID, bearer: str | None) -> SessionDetail:
         self._require_student(auth)
         record = await self._owned(auth, session_id)
-        learning = await self.context.for_user(auth, bearer_token=bearer, subject_id=record.subject_id)
-        record.guardian_user_ids = linked_ids(learning.guardians)
-        record.teacher_user_ids = linked_ids(learning.teachers)
+        learning, fresh = await self._learning(auth, bearer, record.subject_id, record)
+        self._apply_audience(record, learning, fresh)
         if record.status in {"paused", "completed"}:
             record.status = "active"
         record.updated_at = utcnow()
@@ -410,10 +428,48 @@ class TeacherService:
         if auth.role != "STUDENT":
             raise ForbiddenError("Only a student can start or continue a lesson")
 
+    async def _learning(self, auth: AuthContext, bearer: str | None, subject_id, record: SessionRecord | None):
+        """Core context for this turn.
+
+        If Core is down mid-lesson, keep the guardians and teachers already stored.
+        Replacing them with an empty list would lock parents out of a lesson they
+        are still linked to. A brand-new lesson cannot start without Core, because
+        the student id would be wrong.
+        """
+        try:
+            learning = await self.context.for_user(auth, bearer_token=bearer, subject_id=subject_id)
+        except UpstreamError:
+            logger.warning("learning context unavailable")
+            if record is None:
+                raise UpstreamError(
+                    "School records are unavailable. Please try the lesson again in a moment."
+                ) from None
+            return self._context_from_record(record), False
+        return learning, True
+
+    @staticmethod
+    def _context_from_record(record: SessionRecord) -> AuthorizedLearningContext:
+        return AuthorizedLearningContext(
+            student=StudentContext(id=record.student_id, class_id=record.class_id),
+            school=SchoolContext(id=record.school_id),
+            grade_band=record.grade_band,
+            current_learning=CurrentLearning(topic=record.topic or "General study"),
+        )
+
+    @staticmethod
+    def _apply_audience(record: SessionRecord, learning, fresh: bool) -> None:
+        if not fresh:
+            return
+        record.guardian_user_ids = linked_ids(learning.guardians)
+        record.teacher_user_ids = linked_ids(learning.teachers)
+        record.grade_band = normalise_grade_band(learning.grade_band)
+
     async def _limit(self, auth: AuthContext) -> None:
         cap = get_settings().teacher_rate_limit_per_minute
         if not await limiter.allow(f"teacher:{auth.user_id}", limit=cap):
             raise RateLimitError("Too many lesson requests")
+        if not await allow_model(auth):
+            raise RateLimitError(DAILY_LIMIT_MESSAGE)
 
     async def _commit(self) -> None:
         if self.db is not None:

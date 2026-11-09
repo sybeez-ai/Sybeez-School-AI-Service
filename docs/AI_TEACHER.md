@@ -11,11 +11,13 @@ Every route uses the same bearer token as the rest of the AI API (Cognito, or a 
 | Role | Read a lesson | Send messages / resume |
 | --- | --- | --- |
 | Student | Their own lessons | Yes |
-| Parent | Lessons whose guardian list contains them | No |
+| Parent | Lessons whose guardian list contains them, and whose student Core still links to that parent | No |
 | Teacher | Lessons whose teacher list contains them | No |
 | School or platform admin | No | No |
 
-Guardian and teacher ids come from the Core learning context (`guardians`, `teachers`) when the student starts the lesson, and again on each student turn and on resume. The client cannot supply those ids. A parent or teacher linked after the last student turn cannot see that lesson until the student opens it again.
+Guardian and teacher ids come from the Core learning context (`guardians`, `teachers`) when the student starts the lesson, and again on each student turn and on resume. The client cannot supply those ids. A parent or teacher linked after the last student turn cannot see that lesson until the student opens it again, because the database only shows rows that already name them.
+
+On every parent read (`GET /sessions` and `GET /sessions/{id}`), the service also asks Core `GET /api/v1/parents/me/children` with the parent's own token. That route is not part of the exams module, so a school that has switched exams off still shows lesson history. If that route is missing (HTTP 404) on an older Core, the service tries `GET /api/v1/exams/parent/children` once. Any other failure, including the parent portal being switched off, returns no lessons. A successful answer is remembered for 15 seconds. The response shape of the AI routes does not change.
 
 ## Endpoints
 
@@ -59,6 +61,8 @@ The graph is LangGraph, one invocation per message:
 5. On the next message, **grade** the answer. A miss **adapts** and re-explains the same step. Two misses, or a correct answer, move on. After the last step, **summarise** and mark the session completed.
 
 A correct short answer such as `2` is graded. It is not treated as a new topic. Off-topic chat such as a game request is redirected with no board. Harmful requests get a fixed refusal and no board actions. The reply does not repeat the request.
+
+If the language model is unreachable, or its reply cannot be drawn on the board, the lesson continues with a fixed explanation of the topic. The student still gets chat text and board actions. A new lesson cannot start while Core itself is unreachable, because the student id would be wrong. A later turn keeps the saved parent and teacher list if Core blips, instead of wiping it.
 
 `phase` on the turn is `check`, `summarise`, `refuse`, or `redirect`.
 
