@@ -15,6 +15,7 @@ from src.modules.conversations.schemas import ConversationCreate
 from src.modules.conversations.service import ConversationService
 from src.modules.teacher.access import linked_ids, public_plan, role_can_write
 from src.modules.teacher.graph import run_teacher_turn
+from src.modules.teacher.heading import align_board_heading
 from src.modules.teacher.images import search_educational_image
 from src.modules.teacher.protocol import PROTOCOL_VERSION, ensure_image_url
 from src.modules.teacher.records import ActionRecord, MessageRecord, PageRecord, ProgressRecord, SessionRecord
@@ -28,6 +29,17 @@ from src.shared.enums import MessageRole
 from src.shared.utils import utcnow
 
 logger = logging.getLogger("sybeez.ai.teacher")
+
+
+def _class_no(grade_band: str) -> int | None:
+    """Rough class number so picture search can stay age-appropriate."""
+    if grade_band == "elementary":
+        return 4
+    if grade_band == "middle":
+        return 7
+    if grade_band == "secondary":
+        return 11
+    return None
 
 
 def _as_uuid(value: object) -> UUID:
@@ -262,7 +274,10 @@ class TeacherService:
         }
         result = await run_teacher_turn(state, self.llm)
         chat = result.get("chat_text") or ""
-        actions = await self._prepare_actions(record, list(result.get("actions") or []))
+        topic = str((result.get("plan") or {}).get("topic") or record.topic or "")[:120]
+        previous = record.pages[-1].title if record.pages else ""
+        raw_actions = align_board_heading(list(result.get("actions") or []), topic, previous_title=previous)
+        actions = await self._prepare_actions(record, raw_actions)
         voice_event = await self._voice_for(actions)
         record.phase = result.get("phase") or record.phase
         record.status = result.get("status") or record.status
@@ -354,7 +369,10 @@ class TeacherService:
             if action.get("type") != "place_image" or action.get("url"):
                 continue
             try:
-                found = await self.images(action.get("query") or "")
+                found = await self.images(
+                    action.get("query") or "",
+                    class_no=_class_no(record.grade_band),
+                )
             except Exception:
                 logger.warning("image lookup failed")
                 found = None

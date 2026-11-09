@@ -73,9 +73,10 @@ def build_plan(message: str, *, grade_band: str) -> LessonPlan:
                 goal=f"Name {phrase}",
                 explanation=(
                     f"{topic[0].upper() + topic[1:]} is the idea we are learning. "
-                    f"Keep the words {phrase} in mind. We will start with the meaning, then one example."
+                    f"It is the name for {phrase}. "
+                    f"Think of {phrase} in something you already see at home or at school, then say it in your own words."
                 ),
-                example=phrase,
+                example=f"something everyday that shows {phrase}",
                 check_prompt=f"What idea are we learning? Answer with: {phrase}",
                 expected_answer=phrase,
                 board="intro",
@@ -174,8 +175,10 @@ def script_for_step(
     if step_index > 0 or needs_new_page:
         actions.append(NewPage(page_id=str(uuid.uuid4()), title=step.title))
         page_id = actions[0].page_id
-    lead = "Let's slow down. " if reexplain else ""
+    lead = "Let's slow down and look at it another way. " if reexplain else ""
     chat = f"{lead}{step.explanation}"
+    if step.example and step.example.lower() not in chat.lower():
+        chat = f"{chat} An everyday example: {step.example}."
     if reexplain:
         actions.append(ClearRegion(page_id=page_id, x=0.05, y=0.05, w=0.9, h=0.9))
     actions.append(WriteText(id=title_id, page_id=page_id, text=step.title, x=0.08, y=0.1, size="lg"))

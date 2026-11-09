@@ -14,7 +14,7 @@ TOPICS = [
     T("seasons", "Seasons of the year", "Science", [4, 5, 6, 7], "seasons earth orbit tilt diagram", ["Tilt", "Orbit", "Summer", "Winter"], "earth-axis", ["season", "why seasons"]),
     T("solar-system", "The Solar System", "Science", [3, 4, 5, 6, 7], "solar system planets diagram", ["Sun", "Planets", "Orbit"], "solar-system", ["planets", "sun and planets"]),
     T("phases-of-moon", "Phases of the Moon", "Science", [5, 6, 7], "phases of the moon diagram", ["New moon", "Full moon", "Crescent"], "moon", ["moon phases", "moon"]),
-    T("photosynthesis", "Photosynthesis", "Science", [5, 6, 7, 8, 9, 10], "photosynthesis diagram leaf sunlight carbon dioxide", ["Sunlight", "Chlorophyll", "Glucose", "Oxygen"], None, ["how plants make food"]),
+    T("photosynthesis", "Photosynthesis", "Science", [5, 6, 7, 8, 9, 10], "photosynthesis simple labelled diagram for kids leaf sunlight", ["Sunlight", "Chlorophyll", "Glucose", "Oxygen"], None, ["how plants make food"]),
     T("water-cycle", "The Water Cycle", "Science", [3, 4, 5, 6, 7], "water cycle diagram evaporation condensation precipitation", ["Evaporation", "Condensation", "Precipitation"], None, ["rain cycle"]),
     T("parts-of-a-plant", "Parts of a Plant", "Science", [1, 2, 3, 4], "parts of a plant root stem leaf flower diagram", ["Root", "Stem", "Leaf", "Flower"], None, ["plant parts"]),
     T("parts-of-a-flower", "Parts of a Flower", "Science", [5, 6, 7], "flower anatomy diagram stamen pistil petal", ["Petal", "Stamen", "Pistil", "Sepal"], None, ["flower"]),

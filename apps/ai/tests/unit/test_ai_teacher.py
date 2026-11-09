@@ -153,7 +153,7 @@ def _service(llm=None, voice=None, grade="elementary") -> TeacherService:
     )
 
 
-async def _no_image(query: str) -> str | None:
+async def _no_image(query: str, **_kwargs) -> str | None:
     return None
 
 
