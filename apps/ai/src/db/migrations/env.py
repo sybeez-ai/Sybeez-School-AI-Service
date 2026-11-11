@@ -96,6 +96,8 @@ def _migration_failure(exc: BaseException) -> None:
 
 async def run_async_migrations() -> None:
     connect_args = dict(_migration_connect_args)
+    # A sleeping database can take a few minutes to accept connections. Wait, do not add servers.
+    connect_args["timeout"] = max(int(connect_args.get("timeout") or 0), 20)
     listener = _migration_listener
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -106,8 +108,20 @@ async def run_async_migrations() -> None:
     if listener is not None:
         event.listen(connectable.sync_engine, "do_connect", listener)
     try:
-        async with connectable.connect() as connection:
-            await connection.run_sync(do_run_migrations)
+        last_timeout: TimeoutError | None = None
+        for attempt in range(1, 9):
+            try:
+                async with connectable.connect() as connection:
+                    await connection.run_sync(do_run_migrations)
+                return
+            except TimeoutError as exc:
+                last_timeout = exc
+                print(f"MIGRATION_WAIT database not ready attempt={attempt}", flush=True)
+                if attempt == 8:
+                    raise
+                await asyncio.sleep(15)
+        if last_timeout is not None:
+            raise last_timeout
     finally:
         await connectable.dispose()
 
