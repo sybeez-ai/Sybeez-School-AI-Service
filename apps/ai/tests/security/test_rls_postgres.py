@@ -49,6 +49,27 @@ def test_set_local_does_not_leak_to_the_next_transaction(pg_conn):
         assert cursor.fetchone()[0] in ("", None)
 
 
+def test_linked_student_setting_is_local_and_empty_matches_nothing(pg_conn):
+    """A newly confirmed child id is visible only inside the transaction that set it."""
+    from src.db.rls import linked_student_ids_sql
+
+    child = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    clause = linked_student_ids_sql("student_id")
+    pg_conn.autocommit = False
+    with pg_conn.cursor() as cursor:
+        cursor.execute("CREATE TEMP TABLE linked_probe (student_id uuid) ON COMMIT DROP")
+        cursor.execute("INSERT INTO linked_probe VALUES (%s)", (child,))
+        cursor.execute(f"SELECT count(*) FROM linked_probe WHERE {clause}")
+        assert cursor.fetchone()[0] == 0
+        cursor.execute("SELECT set_config('app.linked_student_ids', %s, true)", ("{" + child + "}",))
+        cursor.execute(f"SELECT count(*) FROM linked_probe WHERE {clause}")
+        assert cursor.fetchone()[0] == 1
+    pg_conn.rollback()
+    with pg_conn.cursor() as cursor:
+        cursor.execute("SELECT current_setting('app.linked_student_ids', true)")
+        assert cursor.fetchone()[0] in ("", None)
+
+
 def test_rls_predicate_hides_other_schools(pg_conn):
     clause = tenant_policy_clause()
     role = "sybeez_ai_rls_test"

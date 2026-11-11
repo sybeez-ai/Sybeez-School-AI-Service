@@ -58,14 +58,29 @@ def _user_uuid() -> str:
     return "NULLIF(current_setting('app.user_id', true), '')::uuid"
 
 
+def linked_student_ids_sql(column: str = "student_id") -> str:
+    """Student record ids the app verified with Core for this transaction.
+
+    Unset or empty matches nothing. The app sets this only after Core says the
+    caller is linked to those children, so a newly linked parent can read older
+    lessons without waiting for the student to open them again.
+    """
+    return (
+        f"{column} = ANY(COALESCE("
+        "NULLIF(current_setting('app.linked_student_ids', true), '')::uuid[], "
+        "ARRAY[]::uuid[]))"
+    )
+
+
 def teacher_session_using_sql() -> str:
-    """Student, linked parent, or linked teacher, inside the token school."""
+    """Student, linked parent, linked teacher, or a Core-confirmed child, inside the token school."""
     user = _user_uuid()
     return (
         f"{tenant_policy_clause()} AND ("
         f"student_user_id = {user} OR "
         f"{user} = ANY(guardian_user_ids) OR "
-        f"{user} = ANY(teacher_user_ids))"
+        f"{user} = ANY(teacher_user_ids) OR "
+        f"{linked_student_ids_sql('student_id')})"
     )
 
 
@@ -81,7 +96,7 @@ def _child_exists(table: str, *, write: bool) -> str:
         if write
         else (
             f"(s.student_user_id = {user} OR {user} = ANY(s.guardian_user_ids) "
-            f"OR {user} = ANY(s.teacher_user_ids))"
+            f"OR {user} = ANY(s.teacher_user_ids) OR {linked_student_ids_sql('s.student_id')})"
         )
     )
     return (
