@@ -8,8 +8,10 @@ Replaces the teacher-session read policies in place. No rows are deleted.
 The write check is unchanged: only the student can change a lesson.
 """
 
+import re
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 from src.db.rls import teacher_rls_sql
@@ -41,8 +43,50 @@ _CHILD_TABLES = (
 
 
 def upgrade() -> None:
-    for statement in split_sql(teacher_rls_sql()):
-        op.execute(statement)
+    """Replace the read rule when this login owns the lesson tables.
+
+    The school app login is not always the table owner. Skipping in that case
+    keeps the deploy moving; a database owner can apply the same statements.
+    """
+    bind = op.get_bind()
+    row = bind.execute(
+        sa.text(
+            """
+            SELECT pg_get_userbyid(c.relowner) AS owner,
+                   current_user AS me,
+                   pg_has_role(current_user, c.relowner, 'member') AS can_manage
+            FROM pg_class c
+            WHERE c.relname = 'teacher_sessions' AND c.relkind = 'r'
+            LIMIT 1
+            """
+        )
+    ).mappings().first()
+    if row is None:
+        raise RuntimeError("teacher_sessions is missing; cannot update the lesson read rule")
+    owner = str(row["owner"] or "")
+    print(
+        f"LESSON_POLICY owner={owner} me={row['me']} can_manage={bool(row['can_manage'])}",
+        flush=True,
+    )
+    if not row["can_manage"]:
+        print(
+            "LESSON_POLICY skipped: this login cannot change the lesson read rule. "
+            "A newly linked parent still cannot see older lessons until the table owner applies it.",
+            flush=True,
+        )
+        return
+    switched = False
+    if owner and owner != row["me"]:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", owner):
+            raise RuntimeError("unexpected lesson table owner name")
+        op.execute(sa.text(f'SET ROLE "{owner}"'))
+        switched = True
+    try:
+        for statement in split_sql(teacher_rls_sql()):
+            op.execute(sa.text(statement))
+    finally:
+        if switched:
+            op.execute(sa.text("RESET ROLE"))
 
 
 def downgrade() -> None:
