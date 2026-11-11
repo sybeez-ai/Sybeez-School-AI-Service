@@ -38,6 +38,7 @@ _SLOW_MODEL_PREFIXES = (
     "/api/v1/ai/voice/agent/plan",
     "/api/v1/ai/voice/agent/text",
     "/api/v1/ai/voice/agent/step",
+    "/api/v1/ai/classroom",
 )
 
 # Daily model budget. Lesson turns are counted in TeacherService so the live socket is included.

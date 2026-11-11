@@ -5,6 +5,7 @@ from starlette.requests import HTTPConnection
 from src.core.health import liveness, readiness
 from src.modules.assets.router import router as assets_router
 from src.modules.chat.router import router as chat_router
+from src.modules.classroom.router import router as classroom_router
 from src.modules.conversations.router import router as conversations_router
 from src.modules.evaluation.router import router as evaluation_router
 from src.modules.homework_help.router import router as homework_help_router
@@ -34,6 +35,7 @@ async def ai_feature_gate(request: HTTPConnection) -> None:
 api_router = APIRouter(dependencies=[Depends(ai_feature_gate)])
 
 api_router.include_router(chat_router)
+api_router.include_router(classroom_router)
 api_router.include_router(conversations_router)
 api_router.include_router(practice_router)
 api_router.include_router(homework_help_router)
