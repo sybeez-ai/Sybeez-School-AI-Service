@@ -79,14 +79,14 @@ class MemoryStore:
         self.rows[record.id] = record
         return record
 
-    async def get(self, auth: AuthContext, session_id: UUID) -> SessionRecord | None:
+    async def get(self, auth: AuthContext, session_id: UUID, *, linked_student_ids=None) -> SessionRecord | None:
         record = self.rows.get(session_id)
-        if record is None or not role_can_read(auth, record):
+        if record is None or not role_can_read(auth, record, linked_student_ids=linked_student_ids):
             return None
         return record
 
-    async def list(self, auth: AuthContext, limit: int = 50) -> list[SessionRecord]:
-        rows = [row for row in self.rows.values() if role_can_read(auth, row)]
+    async def list(self, auth: AuthContext, limit: int = 50, *, linked_student_ids=None) -> list[SessionRecord]:
+        rows = [row for row in self.rows.values() if role_can_read(auth, row, linked_student_ids=linked_student_ids)]
         rows.sort(key=lambda row: row.updated_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         return rows[:limit]
 
@@ -285,6 +285,9 @@ def test_rls_limits_teacher_rows_to_student_parent_and_teacher():
     assert "student_user_id" in using
     assert "guardian_user_ids" in using
     assert "teacher_user_ids" in using
+    assert "app.linked_student_ids" in using
+    assert "app.linked_student_ids" in sql
+    assert "app.linked_student_ids" not in check
     assert "app.user_id" in using
     assert "app.school_id" in using
     assert "student_user_id" in check
@@ -652,6 +655,64 @@ async def test_parent_access_fails_closed_without_live_lookup():
     assert await service.list_sessions(_auth(PARENT, "PARENT")) == []
     with pytest.raises(NotFoundError):
         await service.get_session(_auth(PARENT, "PARENT"), first.session_id)
+
+
+@pytest.mark.asyncio
+async def test_newly_linked_parent_sees_older_lessons_immediately():
+    """The lesson was saved before this parent was linked, so the snapshot is empty."""
+    service = _service()
+    student = _auth(USER_A)
+    first = await service.start(student, _body("Teach me fractions"), None)
+    lesson = service.store.rows[first.session_id]
+    lesson.guardian_user_ids = []
+    service.context.parent_children = {lesson.student_id}
+    parent = _auth(PARENT, "PARENT")
+    assert [item.id for item in await service.list_sessions(parent)] == [first.session_id]
+    detail = await service.get_session(parent, first.session_id)
+    assert detail.topic
+    assert any(page["title"] for page in detail.pages)
+    with pytest.raises(ForbiddenError):
+        await service.send(parent, first.session_id, "hello", None)
+
+    # A different child, or a parent in another school, still sees nothing.
+    service.context.parent_children = {uuid4()}
+    assert await service.list_sessions(parent) == []
+    with pytest.raises(NotFoundError):
+        await service.get_session(parent, first.session_id)
+    other_school = _auth(PARENT, "PARENT", school_id=SCHOOL_B)
+    service.context.parent_children = {lesson.student_id}
+    assert await service.list_sessions(other_school) == []
+
+
+@pytest.mark.asyncio
+async def test_board_flow_and_voice_labels():
+    """One lesson turn draws a titled board, and voice names depend on the portal."""
+    from src.modules.voice.agent import text_answer
+    from src.providers.gemini_live import build_system_prompt
+
+    service = _service()
+    turn = await service.start(_auth(USER_A), _body("Teach me fractions"), None)
+    kinds = {event["type"] for event in turn.events}
+    assert {"meta", "chat", "narration", "done"} <= kinds
+    assert turn.chat_text
+    titles = [page["title"] for page in (await service.get_session(_auth(USER_A), turn.session_id)).pages]
+    assert any("fraction" in title.lower() for title in titles)
+
+    class Echo:
+        async def complete(self, *, system, user):
+            return system
+
+    student_voice = await text_answer(Echo(), message="what is a fraction", student=True)
+    parent_voice = await text_answer(Echo(), message="how is my child doing", student=False)
+    assert student_voice.startswith("You are the AI teacher")
+    assert parent_voice.startswith("You are the AI assistant")
+    assert 'never call yourself "AI teacher"' in parent_voice
+    for portal in ("teacher", "parent", "school-admin", "finance"):
+        prompt = build_system_prompt("", None, "/", portal)
+        assert prompt.startswith("You are the AI assistant")
+        assert "AI teacher" not in prompt
+    student_prompt = build_system_prompt("Class 6", "middle", "/student/learning", "student")
+    assert "AI teacher" in student_prompt
 
 
 class DownLLM:

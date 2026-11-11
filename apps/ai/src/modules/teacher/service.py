@@ -3,6 +3,7 @@
 import logging
 from uuid import UUID, uuid4
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.budget import DAILY_LIMIT_MESSAGE, allow_model
@@ -164,10 +165,25 @@ class TeacherService:
             return set()
         return await fetch(auth, bearer_token=bearer)
 
+    async def _publish_linked_students(self, student_ids: set[UUID] | None) -> None:
+        """Tell this transaction which children Core just confirmed.
+
+        Row level security otherwise only sees the guardian list saved on the lesson.
+        An empty list matches nothing. Students and teachers pass None and are unchanged.
+        """
+        if student_ids is None or self.db is None:
+            return
+        payload = "{" + ",".join(str(item) for item in student_ids) + "}"
+        await self.db.execute(
+            text("SELECT set_config('app.linked_student_ids', :ids, true)"),
+            {"ids": payload},
+        )
+
     async def list_sessions(self, auth: AuthContext, bearer: str | None = None) -> list[SessionSummary]:
         require_school(auth)
-        rows = await self.store.list(auth)
         live = await self._live_parent_children(auth, bearer)
+        await self._publish_linked_students(live)
+        rows = await self.store.list(auth, linked_student_ids=live)
         if live is not None:
             rows = [row for row in rows if row.student_id in live]
         return [
@@ -186,11 +202,10 @@ class TeacherService:
 
     async def get_session(self, auth: AuthContext, session_id: UUID, bearer: str | None = None) -> SessionDetail:
         require_school(auth)
-        record = await self.store.get(auth, session_id)
-        if record is None:
-            raise NotFoundError("Session not found")
         live = await self._live_parent_children(auth, bearer)
-        if live is not None and record.student_id not in live:
+        await self._publish_linked_students(live)
+        record = await self.store.get(auth, session_id, linked_student_ids=live)
+        if record is None or (live is not None and record.student_id not in live):
             raise NotFoundError("Session not found")
         return self.to_detail(auth, record)
 

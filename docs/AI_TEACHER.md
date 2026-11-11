@@ -15,7 +15,7 @@ Every route uses the same bearer token as the rest of the AI API (Cognito, or a 
 | Teacher | Lessons whose teacher list contains them | No |
 | School or platform admin | No | No |
 
-Guardian and teacher ids come from the Core learning context (`guardians`, `teachers`) when the student starts the lesson, and again on each student turn and on resume. The client cannot supply those ids. A parent or teacher linked after the last student turn cannot see that lesson until the student opens it again, because the database only shows rows that already name them.
+Guardian and teacher ids come from the Core learning context (`guardians`, `teachers`) when the student starts the lesson, and again on each student turn and on resume. The client cannot supply those ids. A parent Core links to a child can read that child's existing lessons immediately: the read sets `app.linked_student_ids` for that transaction only, after `GET /api/v1/parents/me/children` confirms the link. A parent who is no longer linked sees nothing. A teacher linked after the last student turn still cannot see that lesson until the student opens it again.
 
 On every parent read (`GET /sessions` and `GET /sessions/{id}`), the service also asks Core `GET /api/v1/parents/me/children` with the parent's own token. That route is not part of the exams module, so a school that has switched exams off still shows lesson history. If that route is missing (HTTP 404) on an older Core, the service tries `GET /api/v1/exams/parent/children` once. Any other failure, including the parent portal being switched off, returns no lessons. A successful answer is remembered for 15 seconds. The response shape of the AI routes does not change.
 

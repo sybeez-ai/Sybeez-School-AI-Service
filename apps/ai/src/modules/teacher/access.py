@@ -20,13 +20,21 @@ def same_school(auth: AuthContext, school_id: UUID) -> bool:
     return auth.school_id is not None and auth.school_id == school_id
 
 
-def role_can_read(auth: AuthContext, session: SessionRecord) -> bool:
+def role_can_read(
+    auth: AuthContext,
+    session: SessionRecord,
+    *,
+    linked_student_ids: set[UUID] | None = None,
+) -> bool:
     if not same_school(auth, session.school_id):
         return False
     if auth.role == "STUDENT":
         return session.student_user_id == auth.user_id
     if auth.role == "PARENT":
-        return auth.user_id in session.guardian_user_ids
+        if auth.user_id in session.guardian_user_ids:
+            return True
+        # Core says this parent is linked now, even if the lesson was saved before the link.
+        return bool(linked_student_ids) and session.student_id in linked_student_ids
     if auth.role == "TEACHER":
         return auth.user_id in session.teacher_user_ids
     return False
@@ -40,14 +48,19 @@ def _uuid_array(user_id: UUID):
     return cast(array([user_id]), ARRAY(PG_UUID(as_uuid=True)))
 
 
-def audience_condition(auth: AuthContext):
+def audience_condition(auth: AuthContext, linked_student_ids: set[UUID] | None = None):
     """SQL twin of role_can_read. School id is applied by the caller as well."""
+    from sqlalchemy import or_
+
     from src.db.models.teacher import TeacherSession
 
     if auth.role == "STUDENT":
         return TeacherSession.student_user_id == auth.user_id
     if auth.role == "PARENT":
-        return TeacherSession.guardian_user_ids.op("@>")(_uuid_array(auth.user_id))
+        saved = TeacherSession.guardian_user_ids.op("@>")(_uuid_array(auth.user_id))
+        if not linked_student_ids:
+            return saved
+        return or_(saved, TeacherSession.student_id.in_(list(linked_student_ids)))
     if auth.role == "TEACHER":
         return TeacherSession.teacher_user_ids.op("@>")(_uuid_array(auth.user_id))
     return false()

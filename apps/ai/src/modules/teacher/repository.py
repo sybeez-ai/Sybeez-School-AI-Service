@@ -43,7 +43,13 @@ class SqlTeacherStore:
         await self.db.flush()
         return record
 
-    async def get(self, auth: AuthContext, session_id: UUID) -> SessionRecord | None:
+    async def get(
+        self,
+        auth: AuthContext,
+        session_id: UUID,
+        *,
+        linked_student_ids: set[UUID] | None = None,
+    ) -> SessionRecord | None:
         if auth.school_id is None:
             return None
         stmt = (
@@ -51,7 +57,7 @@ class SqlTeacherStore:
             .where(
                 TeacherSession.id == session_id,
                 TeacherSession.school_id == auth.school_id,
-                audience_condition(auth),
+                audience_condition(auth, linked_student_ids),
             )
             .options(
                 selectinload(TeacherSession.plans),
@@ -66,12 +72,21 @@ class SqlTeacherStore:
             return None
         return self._record(row, with_children=True)
 
-    async def list(self, auth: AuthContext, limit: int = 50) -> list[SessionRecord]:
+    async def list(
+        self,
+        auth: AuthContext,
+        limit: int = 50,
+        *,
+        linked_student_ids: set[UUID] | None = None,
+    ) -> list[SessionRecord]:
         if auth.school_id is None:
             return []
         stmt = (
             select(TeacherSession)
-            .where(TeacherSession.school_id == auth.school_id, audience_condition(auth))
+            .where(
+                TeacherSession.school_id == auth.school_id,
+                audience_condition(auth, linked_student_ids),
+            )
             .order_by(TeacherSession.updated_at.desc())
             .limit(limit)
         )
