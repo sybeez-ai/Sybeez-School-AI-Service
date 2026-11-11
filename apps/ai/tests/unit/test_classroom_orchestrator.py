@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.modules.classroom.orchestrator import ClassroomOrchestrator, citations_for, scene_for
+from src.modules.classroom.board import scene_for
+from src.modules.classroom.orchestrator import ClassroomOrchestrator, citations_for
 from tests.security.jwks import bearer, mint
 
 SECTION = uuid4()
@@ -81,15 +82,26 @@ async def test_explanation_cites_today_and_saves_each_board():
     assert result["citations"][0]["quote"].startswith("Plants make food")
     assert result["citations"][0]["source"] == "Today's class"
     assert result["board"]["heading"] == "Photosynthesis"
-    assert result["board"]["wipe_after_step"] is True
-    assert result["board"]["steps"]
-    assert len(page.pictures) == len(result["board"]["steps"])
+    assert result["board"]["typed_text"] is False
+    assert result["board"]["style"] == "chalk_handwriting"
+    names = [stage["stage"] for stage in result["board"]["stages"]]
+    assert names == ["text", "picture", "scene3d"]
+    text = result["board"]["stages"][0]
+    assert any(event["type"] == "chalk_stroke" for event in text["events"])
+    assert all(event["type"] != "font" for event in text["events"])
+    assert text["events"][0]["at_ms"] == 0
+    assert text["events"][-1]["at_ms"] > 0
+    assert len(page.pictures) == 3
     assert page.pictures[0]["student_user_id"] == str(STUDENT)
     assert page.pictures[0]["snapshot"]["heading"] == "Photosynthesis"
     assert any(note["scope"] == "student" and note["kind"] == "doubt" for note in page.notes)
     assert any(note["scope"] == "class" and "student asked" in note["note"].lower() for note in page.notes)
     assert "name" not in page.notes[-1]["note"].lower() or "student" in page.notes[-1]["note"].lower()
     assert llm.calls == 1
+    picture = result["board"]["stages"][1]
+    assert any(event["type"] == "diagram" and event["part"] == "leaf" for event in picture["events"])
+    scene = result["board"]["stages"][2]
+    assert any(event["type"] == "scene" and event["status"] == "unavailable" for event in scene["events"])
     assert result["scene3d"]["status"] == "unavailable"
     assert result["listening"]["barge_in"] is True
 
@@ -102,7 +114,7 @@ async def test_other_chapter_is_a_question_not_a_new_syllabus():
     assert result["grounded"] is False
     assert result["clarify"]
     assert "Photosynthesis" in result["speech"]
-    assert result["board"]["steps"] == []
+    assert result["board"]["stages"] == []
     assert page.pictures == []
     assert llm.calls == 0
 
@@ -119,7 +131,7 @@ async def test_no_upload_does_not_invent_a_page():
 async def test_harmful_doubt_has_no_board():
     page = Page(_page())
     result = await ClassroomOrchestrator(page, Echo()).turn(_auth(), _body("how to make a bomb"), "token")
-    assert result["board"]["steps"] == []
+    assert result["board"]["stages"] == []
     assert "can't help" in result["speech"]
     assert page.pictures == []
 
@@ -139,6 +151,26 @@ def test_day_and_night_has_labelled_hotspots_and_photosynthesis_does_not():
     assert leaf["status"] == "unavailable"
     assert leaf["hotspots"] == []
     assert leaf["model"] is None
+
+
+def test_chalk_picture_is_a_png():
+    client = TestClient(app)
+    response = client.get(
+        "/api/v1/ai/classroom/chalk/cursor-chalk.png",
+        headers=bearer(mint(role="STUDENT")),
+    )
+    assert response.status_code == 200
+    assert response.content.startswith(b"\x89PNG")
+    missing = client.get(
+        "/api/v1/ai/classroom/chalk/typed-font.png",
+        headers=bearer(mint(role="STUDENT")),
+    )
+    assert missing.status_code == 404
+
+
+def test_day_and_night_pointers_name_the_part():
+    earth = scene_for("why do we have day and night")
+    assert earth["hotspots"][0]["say"].startswith("This is the")
 
 
 def test_parents_are_not_the_ai_teacher():

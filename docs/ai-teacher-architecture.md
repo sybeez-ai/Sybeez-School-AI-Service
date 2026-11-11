@@ -44,7 +44,7 @@ The orchestrator does not call six models. Safety, retrieval against today's pag
 | Safety and age | Blocks harmful requests. Redirects games and gossip back to class. Uses the existing school-safety rules. | No |
 | Retrieval | Loads **only** the caller's class section for the date. Quotes the teacher's text. If the doubt is not on that page, asks which part they mean instead of inventing a syllabus. | No |
 | Memory | Reads and writes three layers: this session, this student, this class. | No |
-| Board | Three short steps. Each step is a heading, a few words on the board, and speech. Before the board is wiped for the next step, the step is saved as a snapshot the website turns into a picture. | Uses the one explanation call |
+| Board | Three stages, always in this order: handwritten words, a hand-drawn diagram, then a 3D pointer scene. Strokes are timed to the voice. Each stage is saved as a picture before the board is wiped. The words are chalk strokes, never typed text. | Uses the one explanation call |
 | 3D | If the topic has its own model, send labelled hotspots ("this is the leaf"). Otherwise say 3D is not available. Never reuse another topic's model. | No |
 | Voice and listening | The browser already talks to Gemini Live. The orchestrator tells it: wait for the student, stop when they interrupt, ask one question when unsure, stay on today's page. | Voice session caps already exist |
 
@@ -219,15 +219,28 @@ Response `200`:
   "clarify": null,
   "speech": "Today your teacher taught that plants make food using sunlight, water and air. The leaf is where this happens. Can you name one thing the leaf uses?",
   "board": {
+    "style": "chalk_handwriting",
+    "typed_text": false,
+    "wipe_after_stage": true,
     "heading": "Photosynthesis",
-    "wipe_after_step": true,
-    "steps": [
+    "assets": {
+      "blackboard": "/api/v1/ai/classroom/chalk/blackboard.png",
+      "chalk_white": "/api/v1/ai/classroom/chalk/chalk-white.png",
+      "cursor": "/api/v1/ai/classroom/chalk/cursor-chalk.png"
+    },
+    "stages": [
       {
+        "stage": "text",
         "step_index": 0,
-        "board_label": "Sun + water + air",
-        "speech": "The leaf uses sunlight, water and air.",
-        "snapshot": {"heading": "Photosynthesis", "lines": ["Sun + water + air"]}
-      }
+        "speech": "Plants make food using sunlight, water and air.",
+        "duration_ms": 4200,
+        "events": [
+          {"at_ms": 0, "type": "chalk_stroke", "chalk": "white", "stamp": "chalk-white", "points": [{"x": 0.08, "y": 0.32}, {"x": 0.12, "y": 0.36}]},
+          {"at_ms": 80, "type": "hand", "asset": "cursor-chalk", "x": 0.12, "y": 0.36}
+        ]
+      },
+      {"stage": "picture", "step_index": 1, "speech": "Here is the same idea as a drawing.", "duration_ms": 4200, "events": [{"at_ms": 0, "type": "diagram", "part": "leaf", "asset": "part-leaf", "x": 0.42, "y": 0.34, "scale": 0.18}]},
+      {"stage": "scene3d", "step_index": 2, "speech": "3D not available for this topic", "duration_ms": 4200, "events": [{"at_ms": 0, "type": "scene", "status": "unavailable", "model": null}]}
     ]
   },
   "scene3d": {
@@ -248,7 +261,29 @@ Response `200`:
 
 `grounded` is true only when a citation is a quote from today's upload. `clarify` is a question when the doubt is not on that page. The speech then does not pretend to teach a different chapter. `scene3d.status` is `ready` only when this topic has its own model. Hotspots use `x` and `y` from 0 to 1 and a `say` line that starts with "This is the".
 
-The website draws each `snapshot`, exports a PNG, and calls the board-picture upload. Then it wipes the board and draws the next step.
+## Chalk board protocol
+
+The board is a blackboard, not a text box. `board.typed_text` is always false. The website must not draw the speech with a font.
+
+Chalk pictures are original drawings shipped with the AI service. Fetch them with the same bearer token:
+
+| Picture | Path |
+| --- | --- |
+| Blackboard texture | `GET /api/v1/ai/classroom/chalk/blackboard.png` |
+| White chalk dab | `GET /api/v1/ai/classroom/chalk/chalk-white.png` |
+| Yellow chalk dab | `GET /api/v1/ai/classroom/chalk/chalk-yellow.png` |
+| Chalk cursor | `GET /api/v1/ai/classroom/chalk/cursor-chalk.png` |
+| Sun, leaf, arrow, drop | `part-sun.png`, `part-leaf.png`, `part-arrow.png`, `part-drop.png` |
+
+A lesson has exactly three stages. Play one stage, save its picture, wipe, then play the next.
+
+1. **text.** Handwriting. Each `chalk_stroke` is a list of points from 0 to 1. Stamp `chalk-white.png` or `chalk-yellow.png` along the points. Move `cursor-chalk.png` to each `hand` event. `at_ms` is when that stroke starts, inside `duration_ms`, in step with the spoken line.
+2. **picture.** The same idea as a drawing. A `diagram` event places one part PNG (`part-leaf`, `part-sun`, `part-arrow`, `part-drop`) at `x`, `y` with `scale`. A short chalk label is written under it.
+3. **scene3d.** A `scene` event opens the model when `status` is `ready`. Each `pointer` event moves the chalk cursor to a hotspot and the voice says `say`, which starts with "This is the". If this topic has no model, `status` is `unavailable`, no other model is used, and the voice says 3D is not available. The stage is still saved as a picture.
+
+Every stage's `snapshot` is the events up to the wipe. The website renders that snapshot to a PNG and uploads it. The AI service also stores the snapshot, so the picture can be rebuilt.
+
+`scene3d` on the turn is the same model decision as stage 3, so a client that only needs the model URL can read it without replaying the strokes.
 
 ## Storage and cost
 
