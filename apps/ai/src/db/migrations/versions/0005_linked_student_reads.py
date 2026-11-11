@@ -49,7 +49,7 @@ def upgrade() -> None:
     keeps the deploy moving; a database owner can apply the same statements.
     """
     bind = op.get_bind()
-    row = bind.execute(
+    found = bind.execute(
         sa.text(
             """
             SELECT pg_get_userbyid(c.relowner) AS owner,
@@ -60,15 +60,14 @@ def upgrade() -> None:
             LIMIT 1
             """
         )
-    ).mappings().first()
-    if row is None:
+    ).fetchone()
+    if found is None:
         raise RuntimeError("teacher_sessions is missing; cannot update the lesson read rule")
-    owner = str(row["owner"] or "")
-    print(
-        f"LESSON_POLICY owner={owner} me={row['me']} can_manage={bool(row['can_manage'])}",
-        flush=True,
-    )
-    if not row["can_manage"]:
+    owner = str(found[0] or "")
+    me = str(found[1] or "")
+    can_manage = bool(found[2])
+    print(f"LESSON_POLICY owner={owner} me={me} can_manage={can_manage}", flush=True)
+    if not can_manage:
         print(
             "LESSON_POLICY skipped: this login cannot change the lesson read rule. "
             "A newly linked parent still cannot see older lessons until the table owner applies it.",
@@ -76,7 +75,7 @@ def upgrade() -> None:
         )
         return
     switched = False
-    if owner and owner != row["me"]:
+    if owner and owner != me:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", owner):
             raise RuntimeError("unexpected lesson table owner name")
         op.execute(sa.text(f'SET ROLE "{owner}"'))

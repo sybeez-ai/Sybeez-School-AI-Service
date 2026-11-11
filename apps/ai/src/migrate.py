@@ -121,6 +121,13 @@ def failure_exit_code(output: str) -> int:
 def failure_reason(output: str) -> str:
     detail = redact(output)
     lines = [line.strip() for line in detail.splitlines() if line.strip()]
+    preferred = [
+        line
+        for line in lines
+        if line.startswith("MIGRATION_ERROR") or line.startswith("LESSON_POLICY")
+    ]
+    if preferred:
+        return preferred[-1][:255]
     interesting = [line for line in lines if "Database migration failed" in line or line.startswith("ERROR")]
     chosen = interesting[-1] if interesting else (lines[-1] if lines else "alembic failed")
     return chosen[:255]
@@ -170,6 +177,9 @@ def main() -> int:
     output = f"{proc.stderr or ''}\n{proc.stdout or ''}"
     reason = failure_reason(output)
     print(reason)
+    for line in redact(output).splitlines():
+        if "MIGRATION_ERROR" in line or "LESSON_POLICY" in line:
+            print(line[:300])
     publish_reason(reason)
     return failure_exit_code(output)
 
