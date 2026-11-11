@@ -78,6 +78,8 @@ def _root_db_error(exc: BaseException) -> BaseException:
 
 
 def _migration_failure(exc: BaseException) -> None:
+    import sys
+
     from src.core.logging import redact
 
     root = _root_db_error(exc)
@@ -85,6 +87,9 @@ def _migration_failure(exc: BaseException) -> None:
     sqlstate = getattr(root, "sqlstate", None)
     if sqlstate:
         kind = f"{kind} sqlstate={sqlstate}"
+    detail = redact(root).replace("\n", " ")[:300]
+    # stdout is what the deploy task keeps. The logger may not reach that stream.
+    print(f"MIGRATION_ERROR {kind}: {detail}", file=sys.stderr, flush=True)
     logger.error("Database migration failed (%s): %s", kind, redact(root))
     raise RuntimeError("Database migration failed") from None
 
