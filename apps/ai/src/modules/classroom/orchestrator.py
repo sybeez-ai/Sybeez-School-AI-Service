@@ -13,8 +13,9 @@ from uuid import uuid4
 from src.core.budget import DAILY_LIMIT_MESSAGE, allow_model
 from src.core.exceptions import AppError, ForbiddenError
 from src.core.security import AuthContext
-from src.modules.assets.catalog import MODEL_UNAVAILABLE, lookup
+from src.modules.assets.catalog import MODEL_UNAVAILABLE
 from src.modules.chat.persona import assistant_name
+from src.modules.classroom.board import chalk_lesson
 from src.modules.classroom.material import ClassroomMaterial
 from src.modules.teacher.safety import assess
 
@@ -69,55 +70,6 @@ def off_page(page: dict, message: str) -> bool:
     return asked.isdisjoint(page_words)
 
 
-def board_steps(topic: str, speech: str, quote: str) -> list[dict]:
-    """Three short board states. Each one is saved before the board is wiped."""
-    heading = (topic or "Today's class")[:80]
-    sentences = [part.strip() for part in re.split(r"(?<=[.?])\s+", speech.strip()) if part.strip()]
-    if quote and quote not in speech:
-        sentences.insert(0, quote)
-    sentences = sentences[:3] or ["Let's look at today's page together."]
-    steps = []
-    lines: list[str] = []
-    for index, sentence in enumerate(sentences):
-        label = " ".join(sentence.replace(".", "").split()[:6])[:60]
-        lines.append(label)
-        steps.append(
-            {
-                "step_index": index,
-                "board_label": label,
-                "speech": sentence[:400],
-                "snapshot": {"heading": heading, "lines": list(lines)},
-            }
-        )
-    return steps
-
-
-def scene_for(topic: str) -> dict:
-    found = lookup(topic or "")
-    if found.get("model3d_status") != "ready" or not found.get("model3d"):
-        return {"status": "unavailable", "model": None, "message": MODEL_UNAVAILABLE, "hotspots": []}
-    terms = list(found.get("key_terms") or [])[:4] or [found.get("title") or topic]
-    hotspots = []
-    for index, term in enumerate(terms):
-        label = str(term)[:40]
-        hotspots.append(
-            {
-                "id": f"part-{index}",
-                "label": label,
-                "say": f"This is the {label.lower()}.",
-                "x": round(0.25 + (index % 2) * 0.4, 2),
-                "y": round(0.3 + (index // 2) * 0.3, 2),
-            }
-        )
-    model = found["model3d"]
-    return {
-        "status": "ready",
-        "model": {"name": model.get("name"), "url": model.get("url")},
-        "message": None,
-        "hotspots": hotspots,
-    }
-
-
 def _fallback_speech(page: dict, quote: str) -> str:
     topic = page.get("topic") or "today's lesson"
     example = page.get("homework") or "something you can see at home or at school"
@@ -163,8 +115,8 @@ class ClassroomOrchestrator:
         quotes = citations_for(page, body.message)
         quote = quotes[0]["quote"] if quotes else ""
         speech = await self._explain(page, body.message, quote, list(body.session_memory))
-        steps = board_steps(page.get("topic") or "", speech, quote)
-        for step in steps:
+        lesson = chalk_lesson(page.get("topic") or "", speech, quote)
+        for stage in lesson["stages"]:
             saved = await self.material.save_picture(
                 bearer,
                 {
@@ -173,12 +125,12 @@ class ClassroomOrchestrator:
                     "on": body.on,
                     "topic": page.get("topic") or "",
                     "session_id": str(body.session_id) if body.session_id else None,
-                    "step_index": step["step_index"],
-                    "caption": step["board_label"],
-                    "snapshot": step["snapshot"],
+                    "step_index": stage["step_index"],
+                    "caption": stage["stage"],
+                    "snapshot": stage["snapshot"],
                 },
             )
-            step["picture_id"] = saved or str(uuid4())
+            stage["picture_id"] = saved or str(uuid4())
         concept = page.get("topic") or "today's lesson"
         note = f"Asked: {body.message[:180]}"
         await self.material.remember(
@@ -211,8 +163,8 @@ class ClassroomOrchestrator:
             "citations": quotes,
             "clarify": None,
             "speech": speech,
-            "board": {"heading": concept[:80], "wipe_after_step": True, "steps": steps},
-            "scene3d": scene_for(concept),
+            "board": {key: value for key, value in lesson.items() if key != "scene3d"},
+            "scene3d": lesson["scene3d"],
             "memory_written": [f"doubt:{concept}"],
             "listening": dict(LISTENING),
         }
@@ -251,7 +203,13 @@ def _stopped(speech: str, *, grounded: bool, clarify: str | None, topic: str = "
         "citations": [],
         "clarify": clarify,
         "speech": speech,
-        "board": {"heading": topic[:80], "wipe_after_step": True, "steps": []},
+        "board": {
+            "style": "chalk_handwriting",
+            "typed_text": False,
+            "wipe_after_stage": True,
+            "heading": topic[:80],
+            "stages": [],
+        },
         "scene3d": {"status": "unavailable", "model": None, "message": MODEL_UNAVAILABLE, "hotspots": []},
         "memory_written": [],
         "listening": dict(LISTENING),
