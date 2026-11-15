@@ -16,16 +16,17 @@ from src.core.rate_limit import limiter
 from src.modules.platform_assistant.prompt import (
     PLATFORM_ROLES,
     PLATFORM_SYSTEM,
-    plain_markdown,
+    PLATFORM_TOOL_NOTE,
     platform_page_context,
 )
-from src.modules.usage.report import publish_llm_usage
-from src.modules.usage.tokens import usage_start
-from src.providers.llm import get_llm, guarded_complete
+from src.modules.platform_assistant.tools import apply_platform_tool_policy, with_platform_tools
+from src.modules.usage.report import publish_usage
+from src.modules.usage.tokens import usage_record
+from src.modules.voice import agent
 
 router = APIRouter(prefix="/platform-assistant", tags=["platform-assistant"])
 
-SYSTEM = PLATFORM_SYSTEM
+SYSTEM = PLATFORM_SYSTEM + "\n" + PLATFORM_TOOL_NOTE
 
 
 class Turn(BaseModel):
@@ -33,14 +34,36 @@ class Turn(BaseModel):
     content: str = Field(max_length=4000)
 
 
+class ToolDeclaration(BaseModel):
+    name: str = Field(max_length=64)
+    description: str = Field(default="", max_length=800)
+    parameters: dict = Field(default_factory=dict)
+
+
 class PlatformChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     history: list[Turn] = Field(default_factory=list, max_length=20)
     page: str | None = Field(default=None, max_length=200)
+    tools: list[ToolDeclaration] = Field(default_factory=list, max_length=48)
 
 
 class PlatformChatResponse(BaseModel):
     reply: str
+    message: dict
+    confirmation_required: bool = False
+    executed: bool = True
+
+
+def _declarations(tools: list[ToolDeclaration]) -> list[dict]:
+    provided = [
+        {
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": tool.parameters or {"type": "OBJECT", "properties": {}},
+        }
+        for tool in tools
+    ]
+    return with_platform_tools(provided)
 
 
 @router.post("/chat", response_model=PlatformChatResponse)
@@ -49,19 +72,31 @@ async def platform_chat(body: PlatformChatRequest, auth: AuthDep, bearer: Bearer
         raise ForbiddenError("The platform assistant is only for the Sybeez platform team")
     if not await limiter.allow(f"platform-assistant:{auth.user_id}", limit=30):
         raise AppError("Too many messages, try again shortly", code="rate_limited", status_code=429)
-    history = "\n".join(f"{t.role}: {t.content}" for t in body.history[-12:])
+    messages = [{"role": turn.role, "content": turn.content} for turn in body.history[-12:]]
+    messages.append({"role": "user", "content": body.message})
     page_line = platform_page_context(body.page, limit=200)
-    user = (
-        (f"{page_line}\n\n" if page_line else "")
-        + (f"=== CONVERSATION ===\n{history}\n\n" if history else "")
-        + f"user: {body.message}\n\nRespond as the platform AI assistant."
-    )
-    llm = get_llm()
-    started = usage_start(llm)
     try:
-        reply = plain_markdown(await guarded_complete(llm, system=SYSTEM, user=user))
+        result = await agent.agent_step(
+            messages=messages,
+            declarations=_declarations(body.tools),
+            system_extra=page_line,
+            system_override=SYSTEM,
+        )
     except UpstreamError:
         reply = "The AI assistant could not answer just now. Please try again in a moment."
-    else:
-        await publish_llm_usage(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
-    return PlatformChatResponse(reply=reply)
+        return PlatformChatResponse(reply=reply, message={"role": "assistant", "content": reply})
+    usage = result.pop("usage", None)
+    if usage is not None:
+        await publish_usage(
+            usage_record(usage, school_id=auth.school_id, user_id=auth.user_id, role=auth.role, capability="CHAT"),
+            bearer,
+        )
+    result = apply_platform_tool_policy(result)
+    message = result.get("message") or {"role": "assistant", "content": ""}
+    reply = str(message.get("content") or "")
+    return PlatformChatResponse(
+        reply=reply,
+        message=message,
+        confirmation_required=bool(result.get("confirmation_required")),
+        executed=bool(result.get("executed", True)),
+    )

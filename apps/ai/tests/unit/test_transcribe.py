@@ -32,7 +32,43 @@ def test_transcribe_requires_auth_and_rejects_empty_audio():
     assert "Traceback" not in empty.text
 
 
+def test_transcribe_prefers_qwen_over_the_gemini_key(monkeypatch):
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
+    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "qwen-key")
+    monkeypatch.setattr(get_settings(), "qwen_asr_model", "qwen3-asr-flash")
+    seen = {"hosts": []}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["hosts"].append(request.url.host)
+        if "dashscope" in request.url.host:
+            assert request.headers.get("authorization") == "Bearer qwen-key"
+            return httpx.Response(
+                200,
+                json={"output": {"choices": [{"message": {"content": [{"text": "good morning"}]}}]}},
+            )
+        return httpx.Response(429, json={"error": {"message": "prepayment credits are depleted"}})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        "src.modules.voice.qwen_audio.httpx.AsyncClient",
+        lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    monkeypatch.setattr("src.modules.context.core_client.httpx.AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
+    response = client.post(
+        PATH,
+        headers=bearer(mint()),
+        files={"audio": ("clip.webm", b"\x1a\x45\xdf\xa3audio", "audio/webm")},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["text"] == "good morning"
+    assert any("dashscope" in host for host in seen["hosts"])
+    assert "generativelanguage" not in "".join(seen["hosts"])
+    assert "qwen-key" not in response.text
+    assert "gemini-key" not in response.text
+
+
 def test_transcribe_returns_text_and_language_without_leaking_the_key(monkeypatch):
+    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
     monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
     seen = {}
 
@@ -79,6 +115,7 @@ def test_transcribe_returns_text_and_language_without_leaking_the_key(monkeypatc
 
 
 def test_usage_report_failure_still_returns_the_transcript(monkeypatch):
+    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
     monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -100,6 +137,7 @@ def test_usage_report_failure_still_returns_the_transcript(monkeypatch):
 
 
 def test_provider_rejection_is_a_clear_error(monkeypatch):
+    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
     monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
     real = httpx.AsyncClient
     monkeypatch.setattr(
