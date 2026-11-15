@@ -1,10 +1,10 @@
-"""POST /api/v1/ai/voice/transcribe sends audio to DashScope, never Gemini."""
+"""POST /api/v1/ai/voice/transcribe sends audio to Amazon Transcribe, not Gemini or Qwen ASR."""
 
-import httpx
 from fastapi.testclient import TestClient
 
-from src.core.config import get_settings
+from src.core.exceptions import UpstreamError
 from src.main import app
+from src.modules.voice import aws_speech
 from src.modules.voice.transcribe import detect_language, parse_transcript
 from tests.security.jwks import bearer, mint
 
@@ -30,30 +30,20 @@ def test_transcribe_requires_auth_and_rejects_empty_audio():
     assert "Traceback" not in empty.text
 
 
-def test_transcribe_uses_dashscope_and_does_not_call_gemini(monkeypatch):
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
+def test_transcribe_uses_amazon_transcribe(monkeypatch):
+    called = {"count": 0}
 
-    async def fake_clip(audio, mime):
+    async def clip(audio: bytes, mime: str | None):
+        called["count"] += 1
         assert audio
-        assert "webm" in (mime or "")
-        from src.modules.usage.tokens import estimate_usage
+        assert mime == "audio/webm"
+        return "good morning", "en-IN"
 
-        return "good morning", "en", estimate_usage("speech", "good morning", model="qwen2-audio-instruct", provider="qwen")
+    async def published(*_args, **_kwargs):
+        return None
 
-    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fake_clip)
-    seen = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["host"] = request.url.host
-        if request.url.path.endswith("/api/v1/ai/usage"):
-            return httpx.Response(200, json={"ok": True})
-        return httpx.Response(500, json={})
-
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        "src.modules.context.core_client.httpx.AsyncClient",
-        lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs),
-    )
+    monkeypatch.setattr(aws_speech, "transcribe_clip", clip)
+    monkeypatch.setattr("src.modules.voice.router.publish_usage", published)
     response = client.post(
         PATH,
         headers=bearer(mint()),
@@ -62,18 +52,16 @@ def test_transcribe_uses_dashscope_and_does_not_call_gemini(monkeypatch):
     assert response.status_code == 200, response.text
     assert response.json()["text"] == "good morning"
     assert response.json()["language"] == "en"
-    assert "generativelanguage" not in seen.get("host", "")
-    assert "gemini-key" not in response.text
-
+    assert called["count"] == 1
+    assert "gemini" not in response.text.lower()
 
 
 def test_transcribe_failure_is_a_clear_error(monkeypatch):
-    async def fail(audio, mime):
-        from src.core.exceptions import UpstreamError
+    async def clip(_audio: bytes, _mime: str | None):
         raise UpstreamError("Could not transcribe the audio")
 
-    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fail)
+    monkeypatch.setattr(aws_speech, "transcribe_clip", clip)
     response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
     assert response.status_code == 502
+    assert response.json()["error"]["message"] == "Could not transcribe the audio"
     assert "Traceback" not in response.text
-    assert "gemini" not in response.text.lower()

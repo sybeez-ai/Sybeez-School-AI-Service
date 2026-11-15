@@ -144,14 +144,14 @@ class SpeakRequest(BaseModel):
 
 @router.post("/speak")
 async def speak(body: SpeakRequest, auth: AuthDep):
-    """Speak a reply with DashScope. Gemini Live is not called."""
+    """Speak a reply with Amazon Polly. Gemini Live is not called."""
     if auth.school_id is None and auth.role not in PLATFORM_ROLES:
         raise ForbiddenError("School context required")
     if not await limiter.allow(f"voice-speak:{auth.user_id}", limit=30):
         raise AppError("Slow down a little", code="rate_limited", status_code=429)
-    from src.modules.voice.qwen_audio import synthesize_qwen
+    from src.modules.voice.aws_speech import synthesize_speech
 
-    audio = await synthesize_qwen(body.text)
+    audio = await asyncio.to_thread(synthesize_speech, body.text)
     if not audio:
         raise AppError("Spoken reply is unavailable", code="voice_unavailable", status_code=503)
     data, mime = audio
@@ -206,6 +206,11 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     except httpx.HTTPError as exc:
         logger.warning("gemini token request failed: %s", type(exc).__name__)
         raise UpstreamError("Voice provider unreachable") from None
+    if response.status_code == 402:
+        logger.warning("gemini token request rejected: status=402")
+        from src.modules.voice.transcribe import VOICE_CREDIT_MESSAGE
+
+        raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
     if response.status_code >= 400:
         logger.warning("gemini token request rejected: status=%s", response.status_code)
         raise UpstreamError("Voice provider rejected the session request")

@@ -1,6 +1,7 @@
-"""Speech-to-text for dictate and voice. DashScope, not the browser and not Gemini.
+"""Speech-to-text for the dictate mic. Amazon Transcribe in ap-south-1.
 
-Audio bytes are never logged.
+Gemini Live is unfunded (HTTP 402) and qwen3-asr-flash is denied (HTTP 403).
+Chat stays on DashScope qwen3.8-flash. Audio bytes are never logged.
 """
 
 from __future__ import annotations
@@ -9,17 +10,10 @@ import json
 import logging
 import re
 
-from src.core.exceptions import AppError
+from src.core.exceptions import AppError, UpstreamError
 from src.modules.usage.tokens import TokenUsage
 
 logger = logging.getLogger("sybeez.ai.voice.transcribe")
-
-_TRANSCRIBE_PROMPT = (
-    'Transcribe the speech in this audio. Reply with only a JSON object '
-    '{"text": "<words spoken>", "language": "<short code>"}. '
-    "language is the language being spoken, a short code such as en, hi, ta, te, ml, kn, bn, mr, gu, pa, or ur. "
-    "If there is no speech, set text to an empty string and language to en."
-)
 
 _LANGUAGE_NAMES = {
     "english": "en",
@@ -91,11 +85,26 @@ def parse_transcript(raw: str) -> tuple[str, str]:
     return spoken, detect_language(spoken)
 
 
+VOICE_CREDIT_MESSAGE = (
+    "Voice credit needed. Gemini prepaid credits are depleted. "
+    "Top up the AI Studio project at https://ai.studio/projects, then try again."
+)
+
+
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
-    """DashScope on the chat key. Gemini is not called."""
+    """Amazon Transcribe with automatic language identification. Gemini and Qwen ASR are not called."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
-    from src.modules.voice.qwen_audio import transcribe_qwen
+    from src.modules.usage.tokens import estimate_usage
+    from src.modules.voice.aws_speech import transcribe_clip
 
-    return await transcribe_qwen(audio, mime)
+    try:
+        spoken, named = await transcribe_clip(audio, mime)
+    except UpstreamError:
+        raise
+    except Exception as exc:
+        logger.warning("transcribe failed: %s", type(exc).__name__)
+        raise UpstreamError("Could not transcribe the audio") from None
+    language = language_code(named, spoken)
+    return spoken, language, estimate_usage(named or "speech", spoken, model="transcribe", provider="aws")
 
