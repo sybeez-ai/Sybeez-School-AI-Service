@@ -1,21 +1,16 @@
-"""Speech-to-text fallback when the browser's Web Speech API fails.
+"""Speech-to-text for dictate and voice. Amazon Transcribe, not the browser and not Gemini.
 
-Uses the Gemini key already configured for live voice, or the configured chat
-provider when Gemini is not set. Audio bytes are never logged.
+Audio bytes are never logged.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import re
 
-import httpx
-
-from src.core.config import get_settings
-from src.core.exceptions import AppError, UpstreamError
-from src.modules.usage.tokens import TokenUsage, usage_from_provider
+from src.core.exceptions import AppError
+from src.modules.usage.tokens import TokenUsage
 
 logger = logging.getLogger("sybeez.ai.voice.transcribe")
 
@@ -61,7 +56,9 @@ def detect_language(text: str) -> str:
 
 
 def language_code(value: str, text: str) -> str:
-    raw = (value or "").strip().lower()
+    raw = (value or "").strip().lower().replace("_", "-")
+    if "-" in raw:
+        raw = raw.split("-", 1)[0]
     if re.fullmatch(r"[a-z]{2,3}", raw):
         return raw
     if raw in _LANGUAGE_NAMES:
@@ -95,86 +92,13 @@ def parse_transcript(raw: str) -> tuple[str, str]:
 
 
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
-    """Prefer the chat provider (Qwen). Gemini is only the fallback; its prepaid key can be empty."""
+    """Amazon Transcribe in the School AWS account. Gemini is not called."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
-    settings = get_settings()
-    if settings.qwen_chat_api_key:
-        from src.modules.voice.qwen_audio import transcribe_qwen
+    from src.modules.usage.tokens import estimate_usage
+    from src.modules.voice.aws_speech import transcribe_clip
 
-        try:
-            return await transcribe_qwen(audio, mime)
-        except UpstreamError:
-            logger.warning("qwen transcription unavailable")
-    if settings.gemini_api_key:
-        return await _gemini(settings, audio, audio_mime(mime))
-    candidates = settings.chat_candidates()
-    if not candidates:
-        raise AppError("Transcription is not configured", code="transcription_unavailable", status_code=503)
-    provider, key, url, model = candidates[0]
-    return await _compatible(provider, key, url, model, audio, audio_mime(mime))
+    spoken, named = await transcribe_clip(audio, mime)
+    language = language_code(named, spoken)
+    return spoken, language, estimate_usage(named or "speech", spoken, model="transcribe", provider="aws")
 
-
-async def _gemini(settings, audio: bytes, mime: str) -> tuple[str, str, TokenUsage]:
-    model = settings.gemini_transcribe_model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    body = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": _TRANSCRIBE_PROMPT},
-                    {"inlineData": {"mimeType": mime, "data": base64.b64encode(audio).decode("ascii")}},
-                ]
-            }
-        ]
-    }
-    try:
-        async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
-            response = await client.post(url, json=body, headers={"x-goog-api-key": settings.gemini_api_key})
-    except httpx.HTTPError as exc:
-        logger.warning("transcription request failed: %s", type(exc).__name__)
-        raise UpstreamError("Could not transcribe the audio") from None
-    if response.status_code >= 400:
-        logger.warning("transcription request rejected status=%s", response.status_code)
-        raise UpstreamError("Could not transcribe the audio")
-    try:
-        payload = response.json()
-        raw = payload["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError, TypeError, ValueError):
-        logger.warning("transcription response was not usable")
-        raise UpstreamError("Could not transcribe the audio") from None
-    text, language = parse_transcript(str(raw))
-    usage = usage_from_provider(payload, prompt=_TRANSCRIBE_PROMPT, reply=text, model=model, provider="gemini")
-    return text, language, usage
-
-
-async def _compatible(provider: str, key: str, url: str, model: str, audio: bytes, mime: str) -> tuple[str, str, TokenUsage]:
-    endpoint = f"{url.rstrip('/')}/audio/transcriptions"
-    extension = "webm" if "webm" in mime else "audio"
-    files = {"file": (f"speech.{extension}", audio, mime)}
-    data = {"model": model, "response_format": "verbose_json"}
-    try:
-        async with httpx.AsyncClient(timeout=get_settings().llm_timeout_seconds) as client:
-            response = await client.post(endpoint, headers={"Authorization": f"Bearer {key}"}, data=data, files=files)
-    except httpx.HTTPError as exc:
-        logger.warning("transcription request failed: %s provider=%s", type(exc).__name__, provider)
-        raise UpstreamError("Could not transcribe the audio") from None
-    if response.status_code >= 400:
-        logger.warning("transcription request rejected status=%s provider=%s", response.status_code, provider)
-        raise UpstreamError("Could not transcribe the audio")
-    try:
-        payload = response.json()
-    except ValueError:
-        logger.warning("transcription response was not usable provider=%s", provider)
-        raise UpstreamError("Could not transcribe the audio") from None
-    text = str(payload.get("text") or "").strip() if isinstance(payload, dict) else ""
-    named = str(payload.get("language") or "") if isinstance(payload, dict) else ""
-    language = language_code(named, text)
-    usage = usage_from_provider(
-        payload if isinstance(payload, dict) else None,
-        prompt=_TRANSCRIBE_PROMPT,
-        reply=text,
-        model=model,
-        provider=provider,
-    )
-    return text, language, usage

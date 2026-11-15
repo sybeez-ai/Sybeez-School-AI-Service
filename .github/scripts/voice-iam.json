@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SchoolVoice",
+      "Effect": "Allow",
+      "Action": [
+        "transcribe:StartStreamTranscription",
+        "transcribe:StartStreamTranscriptionWebSocket",
+        "polly:SynthesizeSpeech"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

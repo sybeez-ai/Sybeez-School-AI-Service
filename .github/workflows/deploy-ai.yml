@@ -104,6 +104,13 @@ jobs:
           set -euo pipefail
           aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > task.json
           python3 .github/scripts/describe_db_config.py task.json
+          ROLE_NAME=$(jq -r '.taskRoleArn' task.json | awk -F/ '{print $NF}')
+          test -n "$ROLE_NAME"
+          aws iam put-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-name SybeezAiVoice \
+            --policy-document file://.github/scripts/voice-iam.json
+          echo "voice policy SybeezAiVoice is on the AI task role"
 
       - name: Render task definition
         id: render

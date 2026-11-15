@@ -18,6 +18,7 @@ dependencies = [
   "email-validator>=2.2.0",
   "python-multipart>=0.0.17",
   "boto3>=1.35.0",
+  "amazon-transcribe>=0.6.2",
   "redis>=5.2.0",
   "langgraph>=0.4.0",
   "websockets>=13",

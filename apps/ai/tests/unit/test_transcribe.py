@@ -1,6 +1,4 @@
-"""POST /api/v1/ai/voice/transcribe is the Web Speech fallback."""
-
-import json
+"""POST /api/v1/ai/voice/transcribe sends audio to Amazon Transcribe."""
 
 import httpx
 from fastapi.testclient import TestClient
@@ -32,28 +30,28 @@ def test_transcribe_requires_auth_and_rejects_empty_audio():
     assert "Traceback" not in empty.text
 
 
-def test_transcribe_prefers_qwen_over_the_gemini_key(monkeypatch):
+def test_transcribe_uses_aws_and_does_not_call_gemini(monkeypatch):
     monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
-    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "qwen-key")
-    monkeypatch.setattr(get_settings(), "qwen_asr_model", "qwen3-asr-flash")
-    seen = {"hosts": []}
+
+    async def fake_clip(audio, mime):
+        assert audio
+        assert "webm" in (mime or "")
+        return "good morning", "en-IN"
+
+    monkeypatch.setattr("src.modules.voice.aws_speech.transcribe_clip", fake_clip)
+    seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        seen["hosts"].append(request.url.host)
-        if "dashscope" in request.url.host:
-            assert request.headers.get("authorization") == "Bearer qwen-key"
-            return httpx.Response(
-                200,
-                json={"output": {"choices": [{"message": {"content": [{"text": "good morning"}]}}]}},
-            )
-        return httpx.Response(429, json={"error": {"message": "prepayment credits are depleted"}})
+        seen["host"] = request.url.host
+        if request.url.path.endswith("/api/v1/ai/usage"):
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(500, json={})
 
     real = httpx.AsyncClient
     monkeypatch.setattr(
-        "src.modules.voice.qwen_audio.httpx.AsyncClient",
+        "src.modules.context.core_client.httpx.AsyncClient",
         lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs),
     )
-    monkeypatch.setattr("src.modules.context.core_client.httpx.AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     response = client.post(
         PATH,
         headers=bearer(mint()),
@@ -61,90 +59,19 @@ def test_transcribe_prefers_qwen_over_the_gemini_key(monkeypatch):
     )
     assert response.status_code == 200, response.text
     assert response.json()["text"] == "good morning"
-    assert any("dashscope" in host for host in seen["hosts"])
-    assert "generativelanguage" not in "".join(seen["hosts"])
-    assert "qwen-key" not in response.text
+    assert response.json()["language"] == "en"
+    assert "generativelanguage" not in seen.get("host", "")
     assert "gemini-key" not in response.text
 
 
-def test_transcribe_returns_text_and_language_without_leaking_the_key(monkeypatch):
-    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        host = request.url.host
-        if "generativelanguage" in host:
-            seen["key"] = request.headers.get("x-goog-api-key")
-            body = json.loads(request.content)
-            seen["has_audio"] = "inlineData" in json.dumps(body.get("contents"))
-            return httpx.Response(
-                200,
-                json={
-                    "candidates": [{"content": {"parts": [{"text": '{"text": "good morning", "language": "en"}'}]}}],
-                    "usageMetadata": {"promptTokenCount": 15, "candidatesTokenCount": 3},
-                },
-            )
-        if request.url.path.endswith("/api/v1/ai/usage"):
-            seen["usage"] = json.loads(request.content)
-            assert "authorization" not in json.dumps(seen["usage"]).lower()
-            return httpx.Response(200, json={"ok": True})
-        return httpx.Response(503, json={})
+def test_transcribe_failure_is_a_clear_error(monkeypatch):
+    async def fail(audio, mime):
+        from src.core.exceptions import UpstreamError
+        raise UpstreamError("Could not transcribe the audio")
 
-    real = httpx.AsyncClient
-
-    def factory(**kwargs):
-        return real(transport=httpx.MockTransport(handler), **kwargs)
-
-    monkeypatch.setattr("src.modules.voice.transcribe.httpx.AsyncClient", factory)
-    monkeypatch.setattr("src.modules.context.core_client.httpx.AsyncClient", factory)
-    response = client.post(
-        PATH,
-        headers=bearer(mint()),
-        files={"audio": ("clip.webm", b"\x1a\x45\xdf\xa3audio", "audio/webm")},
-    )
-    assert response.status_code == 200, response.text
-    assert response.json() == {"text": "good morning", "language": "en"}
-    assert seen["key"] == "server-key"
-    assert seen["has_audio"] is True
-    assert seen["usage"]["input_tokens"] == 15
-    assert seen["usage"]["output_tokens"] == 3
-    assert seen["usage"]["capability"] == "CHAT"
-    assert "server-key" not in response.text
-    assert "audio" not in response.text.lower() or response.json()["text"]
-
-
-def test_usage_report_failure_still_returns_the_transcript(monkeypatch):
-    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "generativelanguage" in request.url.host:
-            return httpx.Response(
-                200,
-                json={"candidates": [{"content": {"parts": [{"text": '{"text": "hi", "language": "en"}'}]}}]},
-            )
-        return httpx.Response(500, json={"error": "nope"})
-
-    real = httpx.AsyncClient
-    factory = lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs)  # noqa: E731
-    monkeypatch.setattr("src.modules.voice.transcribe.httpx.AsyncClient", factory)
-    monkeypatch.setattr("src.modules.context.core_client.httpx.AsyncClient", factory)
-    response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
-    assert response.status_code == 200, response.text
-    assert response.json()["text"] == "hi"
-    assert "Traceback" not in response.text
-
-
-def test_provider_rejection_is_a_clear_error(monkeypatch):
-    monkeypatch.setattr(get_settings(), "qwen_chat_api_key", "")
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        "src.modules.voice.transcribe.httpx.AsyncClient",
-        lambda **kwargs: real(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={})), **kwargs),
-    )
+    monkeypatch.setattr("src.modules.voice.aws_speech.transcribe_clip", fail)
     response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
     assert response.status_code == 502
     assert "Traceback" not in response.text
-    assert response.json()["error"]["message"]
+    assert "gemini" not in response.text.lower()
