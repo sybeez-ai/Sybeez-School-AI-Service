@@ -75,7 +75,7 @@ class CoreClient:
         body = post_body(payload)
         if body is None:
             return False
-        url = f"{self.settings.core_api_url.rstrip('/')}/api/v1/platform/ai/usage"
+        url = f"{self.settings.core_api_url.rstrip('/')}/api/v1/ai/usage"
         try:
             async with httpx.AsyncClient(timeout=self.settings.upstream_timeout_seconds) as client:
                 resp = await client.post(url, headers=self._headers(bearer_token), json=body)

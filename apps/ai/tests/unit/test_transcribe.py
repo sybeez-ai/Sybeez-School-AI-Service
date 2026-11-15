@@ -49,7 +49,7 @@ def test_transcribe_returns_text_and_language_without_leaking_the_key(monkeypatc
                     "usageMetadata": {"promptTokenCount": 15, "candidatesTokenCount": 3},
                 },
             )
-        if request.url.path.endswith("/platform/ai/usage"):
+        if request.url.path.endswith("/api/v1/ai/usage"):
             seen["usage"] = json.loads(request.content)
             assert "authorization" not in json.dumps(seen["usage"]).lower()
             return httpx.Response(200, json={"ok": True})
