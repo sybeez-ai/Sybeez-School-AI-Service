@@ -144,14 +144,14 @@ class SpeakRequest(BaseModel):
 
 @router.post("/speak")
 async def speak(body: SpeakRequest, auth: AuthDep):
-    """Speak a reply with DashScope. Gemini Live is not called."""
+    """Speak a reply with Amazon Polly. Gemini Live is not called."""
     if auth.school_id is None and auth.role not in PLATFORM_ROLES:
         raise ForbiddenError("School context required")
     if not await limiter.allow(f"voice-speak:{auth.user_id}", limit=30):
         raise AppError("Slow down a little", code="rate_limited", status_code=429)
-    from src.modules.voice.qwen_audio import synthesize_qwen
+    from src.modules.voice.aws_speech import synthesize_speech
 
-    audio = await synthesize_qwen(body.text)
+    audio = await asyncio.to_thread(synthesize_speech, body.text)
     if not audio:
         raise AppError("Spoken reply is unavailable", code="voice_unavailable", status_code=503)
     data, mime = audio
@@ -188,9 +188,6 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
         "uses": 1,
         "expireTime": _iso(expires),
         "newSessionExpireTime": _iso(now + timedelta(minutes=START_WITHIN_MINUTES)),
-        # Without a fieldMask Google locks the WHOLE setup to the token's copy, which silently drops
-        # the client's systemInstruction and tools (the model then chats but never calls a tool).
-        # Lock only model/generationConfig/sessionResumption; prompt and tools come from the setup.
         "fieldMask": "model,generationConfig,sessionResumption",
         "bidiGenerateContentSetup": {
             "model": f"models/{model}",

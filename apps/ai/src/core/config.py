@@ -63,6 +63,9 @@ class Settings(BaseSettings):
 
     aws_region: str = ""
     aws_secrets_manager_secret_id: str = ""
+    # Every language call uses Bedrock Nova Lite on the ECS task role.
+    bedrock_chat: bool = True
+    bedrock_model_id: str = ""
 
     core_api_url: str = "http://localhost:8000"
     core_internal_token: str = "dev-internal-service-token"

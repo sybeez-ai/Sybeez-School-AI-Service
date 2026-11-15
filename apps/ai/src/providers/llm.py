@@ -190,7 +190,38 @@ class CompatibleChatLLM(LLMProvider):
         )
 
 
+class BedrockChatLLM(LLMProvider):
+    """Nova Lite on Bedrock through the ECS task role. No other model API is called."""
+
+    provider_name = "bedrock"
+
+    def __init__(self) -> None:
+        self.settings = get_settings()
+        self.model = "nova-lite"
+
+    async def complete(self, *, system: str, user: str) -> str:
+        from src.modules.usage.allowance import pin_model
+        from src.providers.bedrock_chat import BedrockChatError, converse_reply
+
+        stopped = pin_model(self)
+        if stopped:
+            return stopped
+        try:
+            text, _calls, usage, model = await converse_reply(system, [{"role": "user", "content": user}], [])
+        except BedrockChatError as exc:
+            raise UpstreamError("Language model request failed") from exc
+        self.model = model
+        note_usage(self, usage)
+        return text
+
+    async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
+        text = await self.complete(system=system, user=user)
+        for word in text.split(" "):
+            yield word + " "
+
+
 def get_llm() -> LLMProvider:
+    """Chat uses DashScope qwen3.8-flash. Bedrock stays in the tree and is not the live chat path."""
     settings = get_settings()
     if settings.active_chat_api_key:
         return CompatibleChatLLM()
