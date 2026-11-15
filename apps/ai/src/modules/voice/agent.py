@@ -13,6 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+from src.modules.platform_assistant.prompt import PLATFORM_SYSTEM, is_platform_hint, plain_markdown
 from src.modules.teacher.safety import assess, normalise_grade_band
 from src.providers.base import LLMProvider
 
@@ -130,6 +131,10 @@ ASSISTANT_TEXT_SYSTEM = (
 async def text_answer(llm: LLMProvider, *, message: str, context_block: str = "", grade_band: str | None = None,
                       page: str = "", student: bool = True) -> str:
     if not student:
+        if is_platform_hint(None, page):
+            system = PLATFORM_SYSTEM + (f"\nCurrent page: {page[:100]}" if page else "")
+            reply = (await llm.complete(system=system, user=message[:1500])).strip()
+            return plain_markdown(reply)
         system = ASSISTANT_TEXT_SYSTEM + (f"\nCurrent page: {page[:100]}" if page else "")
         return (await llm.complete(system=system, user=message[:1500])).strip()
     blocked = refusal_for(message, grade_band)
@@ -218,7 +223,7 @@ def to_openai_tools(declarations: list[dict]) -> list[dict]:
 
 
 async def agent_step(*, messages: list[dict], declarations: list[dict], system_extra: str = "",
-                     grade_band: str | None = None, student: bool = False) -> dict:
+                     system_override: str | None = None, grade_band: str | None = None, student: bool = False) -> dict:
     """One Qwen step. Returns {message, provider, model}. Raises UpstreamError when every provider fails."""
     import httpx
 
@@ -231,7 +236,9 @@ async def agent_step(*, messages: list[dict], declarations: list[dict], system_e
         blocked = refusal_for(last_user, grade_band)
         if blocked:
             return {"message": {"role": "assistant", "content": blocked}, "provider": "guard", "model": ""}
-    system = STEP_SYSTEM + ("\n" + system_extra if system_extra else "")
+    system = system_override or STEP_SYSTEM
+    if system_extra:
+        system += "\n" + system_extra
     topic_text = " ".join(str(m.get("content") or "") for m in messages if m.get("role") == "user")
     used = prior_tool_calls(messages)
     if student and used >= 1:

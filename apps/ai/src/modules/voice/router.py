@@ -22,6 +22,8 @@ from src.core.rate_limit import limiter
 from src.modules.chat.persona import busy_reply
 from src.modules.context.features import disabled_labels, prompt_block
 from src.modules.context.service import ContextService
+from src.modules.platform_assistant.prompt import PLATFORM_ROLES, PLATFORM_SYSTEM, PLATFORM_TOOL_NOTE, is_platform_hint
+from src.modules.platform_assistant.tools import apply_platform_tool_policy, with_platform_tools
 from src.modules.profile.router import profile_prompt_block
 from src.modules.voice import agent
 from src.providers.gemini_live import build_gemini_live_setup, build_system_prompt
@@ -214,19 +216,35 @@ async def agent_audit(body: AuditEvent, auth: AuthDep):
 @router.post("/agent/step")
 async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
     """One step of the typed (text) agent loop on Qwen. Same tools and persona as voice."""
-    if auth.school_id is None:
+    platform = (
+        auth.role != "STUDENT"
+        and body.portal != "student"
+        and is_platform_hint(body.portal, body.page)
+    )
+    if auth.school_id is None and not (platform and auth.role in PLATFORM_ROLES):
         raise ForbiddenError("School context required")
     if not await limiter.allow(f"voice-step:{auth.user_id}", limit=90):
         raise AppError("Slow down a little", code="rate_limited", status_code=429)
-    student = body.portal == "student"
-    (context_block, grade_band), off = await asyncio.gather(_student_context(auth, bearer), disabled_labels(bearer))
-    extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
-    if context_block:
-        extra += "\nUser context (authoritative):\n" + context_block[:1200]
-    if off:
-        extra += "\n" + prompt_block(off)
-    if student:
-        extra += "\n" + (await profile_prompt_block(auth))[:900]
+    # A student who labels the portal "platform" still gets the child-safety path.
+    student = body.portal == "student" or (auth.role == "STUDENT" and is_platform_hint(body.portal, body.page))
+    if platform:
+        extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
+        declarations = with_platform_tools(list(body.tools))
+        override = PLATFORM_SYSTEM + "\n" + PLATFORM_TOOL_NOTE
+        grade_band = None
+    else:
+        (context_block, grade_band), off = await asyncio.gather(
+            _student_context(auth, bearer), disabled_labels(bearer)
+        )
+        extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
+        if context_block:
+            extra += "\nUser context (authoritative):\n" + context_block[:1200]
+        if off:
+            extra += "\n" + prompt_block(off)
+        if student:
+            extra += "\n" + (await profile_prompt_block(auth))[:900]
+        declarations = list(body.tools)
+        override = None
     messages = []
     for m in body.messages:
         item: dict = {"role": m.role, "content": m.content or ""}
@@ -237,7 +255,7 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
         messages.append(item)
     try:
         result = await agent.agent_step(
-            messages=messages, declarations=body.tools, system_extra=extra,
+            messages=messages, declarations=declarations, system_extra=extra, system_override=override,
             grade_band=grade_band if student else None, student=student,
         )
     except UpstreamError:
@@ -247,6 +265,8 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
             "provider": "fallback",
             "model": "",
         }
+    if platform:
+        result = apply_platform_tool_policy(result)
     logger.info("agent_step user=%s portal=%s provider=%s tool_calls=%d", auth.user_id, body.portal,
                 result["provider"], len(result["message"].get("tool_calls") or []))
     return result

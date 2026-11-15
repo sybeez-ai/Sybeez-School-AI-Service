@@ -13,22 +13,12 @@ from pydantic import BaseModel, Field
 from src.api.dependencies import AuthDep
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
+from src.modules.platform_assistant.prompt import PLATFORM_ROLES, PLATFORM_SYSTEM, plain_markdown
 from src.providers.llm import get_llm, guarded_complete
 
 router = APIRouter(prefix="/platform-assistant", tags=["platform-assistant"])
 
-PLATFORM_ROLES = {"PLATFORM_ADMIN", "PLATFORM_STAFF"}
-
-SYSTEM = (
-    "You are the AI assistant inside the Sybeez School platform console, used by the Sybeez "
-    "team (super admin and platform staff) who run the multi-school SaaS. You help with: "
-    "onboarding schools and school admins, plans and per-student pricing, free trials, "
-    "feature and portal switches per school, the logs view (login failures, app errors, "
-    "activity by school or user), team access, AI usage and platform settings. "
-    "Be concise and practical, use short steps. You cannot see live data unless the operator "
-    "pastes it; never invent numbers, names or school data. Never ask for or repeat passwords, "
-    "API keys or tokens."
-)
+SYSTEM = PLATFORM_SYSTEM
 
 
 class Turn(BaseModel):
@@ -59,7 +49,7 @@ async def platform_chat(body: PlatformChatRequest, auth: AuthDep) -> PlatformCha
         + f"user: {body.message}\n\nRespond as the platform AI assistant."
     )
     try:
-        reply = await guarded_complete(get_llm(), system=SYSTEM, user=user)
+        reply = plain_markdown(await guarded_complete(get_llm(), system=SYSTEM, user=user))
     except UpstreamError:
         reply = "The AI assistant could not answer just now. Please try again in a moment."
     return PlatformChatResponse(reply=reply)

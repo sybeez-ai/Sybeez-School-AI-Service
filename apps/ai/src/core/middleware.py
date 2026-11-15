@@ -64,13 +64,17 @@ def request_timeout_for_path(path: str) -> float:
     return settings.request_timeout_seconds
 
 
-# Platform-team sessions carry no school. Only these stateless routes accept them.
-_SCHOOLLESS_PREFIXES = ("/api/v1/ai/platform-assistant/",)
+# Platform-team sessions carry no school. The console chat and its typed tool step accept them.
+_PLATFORM_CHAT_PREFIX = "/api/v1/ai/platform-assistant/"
+_PLATFORM_STEP_PATH = "/api/v1/ai/voice/agent/step"
 _PLATFORM_ROLES = {"PLATFORM_ADMIN", "PLATFORM_STAFF"}
 
 
 def _schoolless_allowed(path: str, role: str) -> bool:
-    return role in _PLATFORM_ROLES and normalize_path(path).startswith(_SCHOOLLESS_PREFIXES)
+    if role not in _PLATFORM_ROLES:
+        return False
+    normalized = normalize_path(path)
+    return normalized.startswith(_PLATFORM_CHAT_PREFIX) or normalized == _PLATFORM_STEP_PATH
 
 
 def is_public_path(path: str, method: str) -> bool:
