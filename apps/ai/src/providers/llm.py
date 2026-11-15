@@ -221,8 +221,11 @@ class BedrockChatLLM(LLMProvider):
 
 
 def get_llm() -> LLMProvider:
-    """Every Sybeez language call uses Bedrock. Gemini and other model APIs are not called."""
-    return BedrockChatLLM()
+    """Chat uses DashScope qwen3.8-flash. Bedrock stays in the tree and is not the live chat path."""
+    settings = get_settings()
+    if settings.active_chat_api_key:
+        return CompatibleChatLLM()
+    return EchoLLM()
 
 
 async def guarded_complete(llm: LLMProvider, *, system: str, user: str) -> str:

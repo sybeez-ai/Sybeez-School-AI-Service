@@ -183,13 +183,28 @@ def test_typed_assistant_names_the_portal_when_the_model_is_down(monkeypatch):
 
 def test_daily_voice_cap_is_a_clear_limit(monkeypatch):
     monkeypatch.setattr(get_settings(), "voice_sessions_per_user_per_day", 1)
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
+    real = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "generativelanguage" not in request.url.host:
+            return httpx.Response(503, json={})
+        return httpx.Response(200, json={"name": "auth_tokens/one"})
+
+    monkeypatch.setattr(voice.httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     headers = bearer(mint())
-    opened = client.post("/api/v1/ai/voice/gemini/session", headers=headers)
-    assert opened.status_code == 200
-    assert opened.json()["session"]["provider"] == "aws"
+    assert client.post("/api/v1/ai/voice/gemini/session", headers=headers).status_code == 200
     blocked = client.post("/api/v1/ai/voice/gemini/session", headers=headers)
     assert blocked.status_code == 429
     assert blocked.json()["error"]["message"].startswith("Daily AI limit")
+
+
+def test_unconfigured_voice_does_not_spend_the_daily_cap(monkeypatch):
+    monkeypatch.setattr(get_settings(), "voice_sessions_per_user_per_day", 1)
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "")
+    headers = bearer(mint())
+    assert client.post("/api/v1/ai/voice/gemini/session", headers=headers).status_code == 503
+    assert client.post("/api/v1/ai/voice/gemini/session", headers=headers).status_code == 503
 
 
 def test_audit_events_do_not_spend_the_model_budget(monkeypatch):

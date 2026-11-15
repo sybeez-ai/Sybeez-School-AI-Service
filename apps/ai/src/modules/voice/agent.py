@@ -1,7 +1,7 @@
-"""Server side of the AI teacher/assistant agent.
+"""Server side of the AI teacher/assistant agent: guarded lesson plans and text fallback (Qwen).
 
-Chat runs on Amazon Bedrock Nova Lite. Speech is Transcribe and Polly.
-Gemini is not called. This module still owns child safety and lesson structure.
+Voice runs browser <-> Gemini Live. Everything here is the part Gemini Live should not
+decide alone: child safety, lesson structure and a cheap text path when voice is down.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from src.modules.platform_assistant.prompt import (
     platform_page_context,
 )
 from src.modules.teacher.safety import assess, normalise_grade_band
+from src.modules.usage.tokens import usage_from_provider
 from src.modules.voice.language import VOICE_LANGUAGE
 from src.providers.base import LLMProvider
 
@@ -233,9 +234,13 @@ def to_openai_tools(declarations: list[dict]) -> list[dict]:
 
 async def agent_step(*, messages: list[dict], declarations: list[dict], system_extra: str = "",
                      system_override: str | None = None, grade_band: str | None = None, student: bool = False) -> dict:
-    """One Nova Lite step. Returns {message, provider, model}. Raises UpstreamError when Bedrock refuses."""
+    """One Qwen step. Returns {message, provider, model}. Raises UpstreamError when every provider fails."""
+    import httpx
+
+    from src.core.config import get_settings
     from src.core.exceptions import UpstreamError
 
+    settings = get_settings()
     last_user = next((m.get("content") or "" for m in reversed(messages) if m.get("role") == "user"), "")
     if student:
         blocked = refusal_for(last_user, grade_band)
@@ -248,22 +253,46 @@ async def agent_step(*, messages: list[dict], declarations: list[dict], system_e
     used = prior_tool_calls(messages)
     if student and used >= 1:
         declarations = []
+    body_base = {"messages": [{"role": "system", "content": system}, *messages], "temperature": 0.3}
     tools = to_openai_tools(declarations)
-    # Nova Lite on Bedrock. No Gemini and no other model API.
-    try:
-        from src.providers.bedrock_chat import converse_reply
-
-        text, calls, usage, model = await converse_reply(system, messages, declarations if tools else [])
-    except Exception as exc:
-        logger.warning("bedrock agent step failed: %s", type(exc).__name__)
-        raise UpstreamError("The assistant is busy, please try again") from exc
-    out = {"role": "assistant", "content": text}
-    if student:
-        calls, dropped_earth = trim_student_tools(calls, topic_text=topic_text, already_used=used)
-        if dropped_earth and UNAVAILABLE_3D not in out["content"]:
-            out["content"] = (out["content"] + " " + UNAVAILABLE_3D).strip()
-    if calls:
-        out["tool_calls"] = calls
-    elif student:
-        out["content"] = refusal_for(out["content"], grade_band) or out["content"]
-    return {"message": out, "provider": "bedrock", "model": model, "usage": usage}
+    if tools:
+        body_base["tools"] = tools
+        body_base["tool_choice"] = "auto"
+    # Qwen first (Silver's rule); other keyed providers only as a reported fallback.
+    candidates = sorted(settings.chat_candidates(), key=lambda c: c[0] != "qwen")
+    last_exc: Exception | None = None
+    for provider, key, url, model in candidates:
+        body = {**body_base, "model": model}
+        if "dashscope" in url:
+            body["enable_thinking"] = False
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)) as client:
+                resp = await client.post(f"{url.rstrip('/')}/chat/completions",
+                                         headers={"Authorization": f"Bearer {key}"}, json=body)
+                resp.raise_for_status()
+                data = resp.json()
+                msg = data["choices"][0]["message"]
+        except Exception as exc:  # next provider
+            logger.warning("agent step failed provider=%s: %s", provider, type(exc).__name__)
+            last_exc = exc
+            continue
+        raw_reply = msg.get("content") or ""
+        prompt_text = system + "\n" + "\n".join(str(item.get("content") or "") for item in messages)
+        usage = usage_from_provider(data, prompt=prompt_text, reply=raw_reply, model=model, provider=provider)
+        out = {"role": "assistant", "content": raw_reply}
+        calls = []
+        for c in (msg.get("tool_calls") or [])[:6]:
+            fn = c.get("function") or {}
+            calls.append({"id": str(c.get("id", ""))[:64], "type": "function",
+                          "function": {"name": str(fn.get("name", ""))[:MAX_TOOL_NAME],
+                                       "arguments": str(fn.get("arguments", "{}"))[:4000]}})
+        if student:
+            calls, dropped_earth = trim_student_tools(calls, topic_text=topic_text, already_used=used)
+            if dropped_earth and UNAVAILABLE_3D not in out["content"]:
+                out["content"] = (out["content"] + " " + UNAVAILABLE_3D).strip()
+        if calls:
+            out["tool_calls"] = calls
+        elif student:
+            out["content"] = refusal_for(out["content"], grade_band) or out["content"]
+        return {"message": out, "provider": provider, "model": model, "usage": usage}
+    raise UpstreamError("The assistant is busy, please try again") from last_exc

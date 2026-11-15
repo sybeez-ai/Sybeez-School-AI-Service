@@ -1,19 +1,30 @@
-"""Speech-to-text for the dictate mic. Amazon Transcribe in ap-south-1.
+"""Speech-to-text for the dictate mic. Gemini, not Qwen ASR.
 
-Gemini Live is unfunded (HTTP 402) and qwen3-asr-flash is denied (HTTP 403).
-Chat stays on DashScope qwen3.8-flash. Audio bytes are never logged.
+qwen3-asr-flash returns 403 for the production DashScope key. Chat stays on
+qwen3.8-flash. Audio bytes and API keys are never logged.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import re
 
+import httpx
+
+from src.core.config import get_settings
 from src.core.exceptions import AppError, UpstreamError
 from src.modules.usage.tokens import TokenUsage
 
 logger = logging.getLogger("sybeez.ai.voice.transcribe")
+
+_TRANSCRIBE_PROMPT = (
+    'Transcribe the speech in this audio. Reply with only a JSON object '
+    '{"text": "<words spoken>", "language": "<short code>"}. '
+    "language is the language being spoken, a short code such as en, hi, ta, te, ml, kn, bn, mr, gu, pa, or ur. "
+    "If there is no speech, set text to an empty string and language to en."
+)
 
 _LANGUAGE_NAMES = {
     "english": "en",
@@ -92,19 +103,49 @@ VOICE_CREDIT_MESSAGE = (
 
 
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
-    """Amazon Transcribe with automatic language identification. Gemini and Qwen ASR are not called."""
+    """Gemini file transcription. The Qwen ASR model is not called."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
-    from src.modules.usage.tokens import estimate_usage
-    from src.modules.voice.aws_speech import transcribe_clip
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
+    return await _gemini(settings, audio, audio_mime(mime))
 
+
+async def _gemini(settings, audio: bytes, mime: str) -> tuple[str, str, TokenUsage]:
+    from src.modules.usage.tokens import usage_from_provider
+
+    model = settings.gemini_transcribe_model
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": _TRANSCRIBE_PROMPT},
+                    {"inlineData": {"mimeType": mime, "data": base64.b64encode(audio).decode("ascii")}},
+                ]
+            }
+        ]
+    }
     try:
-        spoken, named = await transcribe_clip(audio, mime)
-    except UpstreamError:
-        raise
-    except Exception as exc:
-        logger.warning("transcribe failed: %s", type(exc).__name__)
+        async with httpx.AsyncClient(timeout=settings.llm_timeout_seconds) as client:
+            response = await client.post(url, json=body, headers={"x-goog-api-key": settings.gemini_api_key})
+    except httpx.HTTPError as exc:
+        logger.warning("gemini transcription failed: %s", type(exc).__name__)
         raise UpstreamError("Could not transcribe the audio") from None
-    language = language_code(named, spoken)
-    return spoken, language, estimate_usage(named or "speech", spoken, model="transcribe", provider="aws")
+    if response.status_code == 402:
+        logger.warning("gemini transcription rejected: status=402")
+        raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
+    if response.status_code >= 400:
+        logger.warning("gemini transcription rejected: status=%s", response.status_code)
+        raise UpstreamError("Could not transcribe the audio")
+    try:
+        payload = response.json()
+        raw = payload["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError, TypeError, ValueError):
+        logger.warning("gemini transcription response was not usable")
+        raise UpstreamError("Could not transcribe the audio") from None
+    text, language = parse_transcript(str(raw))
+    usage = usage_from_provider(payload, prompt=_TRANSCRIBE_PROMPT, reply=text, model=model, provider="gemini")
+    return text, language, usage
 

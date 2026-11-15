@@ -10,6 +10,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
+import httpx
 from fastapi import APIRouter, File, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -35,6 +36,7 @@ from src.modules.usage.report import publish_llm_usage, publish_usage
 from src.modules.usage.tokens import usage_record, usage_start
 from src.modules.voice import agent
 from src.modules.voice.transcribe import transcribe_audio
+from src.providers.gemini_live import build_gemini_live_setup, build_system_prompt
 from src.providers.llm import get_llm
 
 logger = logging.getLogger("sybeez.ai.voice")
@@ -165,35 +167,69 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     if auth.school_id is None and not platform:
         raise ForbiddenError("School context required")
     settings = get_settings()
+    if not settings.gemini_api_key:
+        raise AppError("Voice is not configured", code="voice_unavailable", status_code=503)
     if not await limiter.allow(f"voice-mint:{auth.user_id}", limit=MINTS_PER_MINUTE):
         raise AppError("Too many voice sessions, try again shortly", code="rate_limited", status_code=429)
     if not await allow_voice(auth):
         raise AppError(DAILY_LIMIT_MESSAGE, code="rate_limited", status_code=429)
-    from src.modules.usage.allowance import stopped_reply
-    from src.providers.bedrock_chat import nova_lite_model_id, voice_engine
+    from src.modules.usage.allowance import assigned_model, stopped_reply
 
     stopped = stopped_reply()
     if stopped:
         raise AppError(stopped, code="token_limit", status_code=403)
-    region = (settings.aws_region or "").strip() or "ap-south-1"
+    chosen = assigned_model()
+    model = settings.gemini_live_model
+    if chosen and "gemini" in chosen.lower():
+        model = chosen.split("/", 1)[1] if chosen.startswith("models/") else chosen
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=SESSION_MINUTES)
-    engine = voice_engine(region)
-    # Nova Sonic is not called from Mumbai. Indian languages use Transcribe and Polly.
-    if engine == "nova-sonic":
-        engine = "transcribe-polly"
-    return {
-        "value": "aws",
-        "expires_at": _iso(expires),
-        "ws_url": "",
-        "setup": {"provider": "aws", "engine": engine},
-        "session": {
-            "model": nova_lite_model_id(region, settings.bedrock_model_id),
-            "voice": "Kajal",
-            "provider": "aws",
-            "engine": engine,
-            "max_minutes": SESSION_MINUTES,
+    token_body = {
+        "uses": 1,
+        "expireTime": _iso(expires),
+        "newSessionExpireTime": _iso(now + timedelta(minutes=START_WITHIN_MINUTES)),
+        "fieldMask": "model,generationConfig,sessionResumption",
+        "bidiGenerateContentSetup": {
+            "model": f"models/{model}",
+            "generationConfig": {"responseModalities": ["AUDIO"]},
+            "sessionResumption": {},
         },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                TOKEN_URL, json=token_body, headers={"x-goog-api-key": settings.gemini_api_key}
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("gemini token request failed: %s", type(exc).__name__)
+        raise UpstreamError("Voice provider unreachable") from None
+    if response.status_code == 402:
+        logger.warning("gemini token request rejected: status=402")
+        from src.modules.voice.transcribe import VOICE_CREDIT_MESSAGE
+
+        raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
+    if response.status_code >= 400:
+        logger.warning("gemini token request rejected: status=%s", response.status_code)
+        raise UpstreamError("Voice provider rejected the session request")
+    name = (response.json() or {}).get("name")
+    if not name:
+        raise UpstreamError("Voice provider returned no token")
+    (context_block, grade_band), profile_block, off = await asyncio.gather(
+        _student_context(auth, bearer), profile_prompt_block(auth), disabled_labels(bearer)
+    )
+    if off:
+        context_block = (context_block + "\n" + prompt_block(off)).strip()
+    prompt = build_system_prompt(
+        context_block, grade_band if body.portal == "student" else None,
+        body.page, body.portal, profile_block,
+    )
+    return {
+        "value": name,
+        "expires_at": _iso(expires),
+        "ws_url": CONSTRAINED_WS_URL,
+        "setup": build_gemini_live_setup(settings, system_prompt=prompt),
+        "session": {"model": model, "voice": settings.gemini_live_voice, "provider": "gemini",
+                    "max_minutes": SESSION_MINUTES},
     }
 
 
