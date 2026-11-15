@@ -72,7 +72,12 @@ def test_transcribe_failure_is_a_clear_error(monkeypatch):
         from src.core.exceptions import UpstreamError
         raise UpstreamError("Could not transcribe the audio")
 
+    async def aws_fail(audio, mime):
+        from src.core.exceptions import UpstreamError
+        raise UpstreamError("Could not transcribe the audio")
+
     monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fail)
+    monkeypatch.setattr("src.modules.voice.aws_speech.transcribe_clip", aws_fail)
     response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
     assert response.status_code == 502
     assert "Traceback" not in response.text

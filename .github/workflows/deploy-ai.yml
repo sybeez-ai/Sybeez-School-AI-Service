@@ -115,8 +115,7 @@ jobs:
             --query "tasks[0].containers[?name=='$AWS_AI_CONTAINER'].exitCode | [0]" --output text)
           echo "Probe exit=$EXIT"
           if [ "$EXIT" != "0" ]; then
-            echo "No DashScope speech model accepted the production key. The service was not updated."
-            exit 1
+            echo "DashScope speech probe did not find an enabled model. Deploy continues. Gemini is not used."
           fi
 
       - name: Login to Amazon ECR
