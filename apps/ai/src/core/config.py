@@ -63,7 +63,7 @@ class Settings(BaseSettings):
 
     aws_region: str = ""
     aws_secrets_manager_secret_id: str = ""
-    # Chat uses Bedrock Nova Lite. Set BEDROCK_CHAT=false only to force the older HTTP providers.
+    # Every language call uses Bedrock Nova Lite on the ECS task role.
     bedrock_chat: bool = True
     bedrock_model_id: str = ""
 

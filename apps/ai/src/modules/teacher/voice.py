@@ -54,29 +54,10 @@ class GeminiLiveVoice:
     name = "gemini_live"
 
     def available(self) -> bool:
-        return get_settings().has_gemini_live
+        return False
 
     async def synthesize(self, text: str) -> VoiceClip | None:
-        spoken = " ".join(text.split())[:600]
-        if not spoken or not self.available():
-            return None
-        try:
-            pcm = await self._speak(spoken)
-        except Exception:
-            logger.warning("gemini live synthesis failed")
-            return None
-        if not pcm:
-            return None
-        if len(pcm) > _MAX_PCM_BYTES:
-            pcm = pcm[:_MAX_PCM_BYTES]
-        duration_ms = max(1, int(len(pcm) / (_SAMPLE_RATE * 2) * 1000))
-        return VoiceClip(
-            provider=self.name,
-            mime_type=f"audio/pcm;rate={_SAMPLE_RATE}",
-            audio_base64=base64.b64encode(pcm).decode("ascii"),
-            duration_ms=duration_ms,
-            sample_rate=_SAMPLE_RATE,
-        )
+        return None
 
     async def _speak(self, text: str) -> bytes:
         import websockets
@@ -210,10 +191,7 @@ class PollyVoice:
 
 
 def get_voice():
-    settings = get_settings()
-    provider = settings.voice_provider.lower()
+    provider = get_settings().voice_provider.lower()
     if provider == "none":
         return NullVoice()
-    if provider == "qwen" and settings.has_qwen_voice:
-        return QwenVoice()
     return PollyVoice()

@@ -191,19 +191,13 @@ class CompatibleChatLLM(LLMProvider):
 
 
 class BedrockChatLLM(LLMProvider):
-    """Nova Lite on Bedrock. Falls back to the keyed HTTP provider when Bedrock refuses."""
+    """Nova Lite on Bedrock through the ECS task role. No other model API is called."""
 
     provider_name = "bedrock"
 
     def __init__(self) -> None:
         self.settings = get_settings()
         self.model = "nova-lite"
-        self._fallback: LLMProvider | None = None
-
-    def _next(self) -> LLMProvider:
-        if self._fallback is None:
-            self._fallback = CompatibleChatLLM() if self.settings.active_chat_api_key else EchoLLM()
-        return self._fallback
 
     async def complete(self, *, system: str, user: str) -> str:
         from src.modules.usage.allowance import pin_model
@@ -212,15 +206,13 @@ class BedrockChatLLM(LLMProvider):
         stopped = pin_model(self)
         if stopped:
             return stopped
-        if self.settings.bedrock_chat:
-            try:
-                text, _calls, usage, model = await converse_reply(system, [{"role": "user", "content": user}], [])
-                self.model = model
-                note_usage(self, usage)
-                return text
-            except BedrockChatError:
-                logger.warning("bedrock complete failed; using the fallback provider")
-        return await self._next().complete(system=system, user=user)
+        try:
+            text, _calls, usage, model = await converse_reply(system, [{"role": "user", "content": user}], [])
+        except BedrockChatError as exc:
+            raise UpstreamError("Language model request failed") from exc
+        self.model = model
+        note_usage(self, usage)
+        return text
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
         text = await self.complete(system=system, user=user)
@@ -229,12 +221,8 @@ class BedrockChatLLM(LLMProvider):
 
 
 def get_llm() -> LLMProvider:
-    settings = get_settings()
-    if settings.bedrock_chat:
-        return BedrockChatLLM()
-    if settings.active_chat_api_key:
-        return CompatibleChatLLM()
-    return EchoLLM()
+    """Every Sybeez language call uses Bedrock. Gemini and other model APIs are not called."""
+    return BedrockChatLLM()
 
 
 async def guarded_complete(llm: LLMProvider, *, system: str, user: str) -> str:
