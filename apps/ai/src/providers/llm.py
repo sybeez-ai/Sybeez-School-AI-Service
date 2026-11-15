@@ -19,6 +19,11 @@ class EchoLLM(LLMProvider):
     model = "echo"
 
     async def complete(self, *, system: str, user: str) -> str:
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            return stopped
         text = (
             "Let's make this simple.\n\n"
             "Based on what your teacher covered, here's a clear explanation.\n\n"
@@ -67,6 +72,11 @@ class CompatibleChatLLM(LLMProvider):
         return [("custom", self.api_key, self.base_url, self.model)]
 
     async def complete(self, *, system: str, user: str) -> str:
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            return stopped
         last: httpx.HTTPError | None = None
         for provider, key, url, model in self._targets():
             try:
@@ -104,6 +114,12 @@ class CompatibleChatLLM(LLMProvider):
             return text
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            yield stopped
+            return
         last: httpx.HTTPError | None = None
         for provider, key, url, model in self._targets():
             started = False

@@ -152,7 +152,15 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
         raise AppError("Too many voice sessions, try again shortly", code="rate_limited", status_code=429)
     if not await allow_voice(auth):
         raise AppError(DAILY_LIMIT_MESSAGE, code="rate_limited", status_code=429)
+    from src.modules.usage.allowance import assigned_model, stopped_reply
+
+    stopped = stopped_reply()
+    if stopped:
+        raise AppError(stopped, code="token_limit", status_code=403)
+    chosen = assigned_model()
     model = settings.gemini_live_model
+    if chosen and "gemini" in chosen.lower():
+        model = chosen.split("/", 1)[1] if chosen.startswith("models/") else chosen
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=SESSION_MINUTES)
     token_body = {

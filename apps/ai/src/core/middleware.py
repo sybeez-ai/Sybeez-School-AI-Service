@@ -301,4 +301,8 @@ class SecurityMiddleware:
         state = scope.setdefault("state", {})
         state["auth"] = ctx
         state["token"] = token
+        from src.modules.usage.allowance import allowance_var, load_allowance
+
+        decision = await load_allowance(ctx, token)
+        bindings.append((allowance_var, allowance_var.set(decision)))
         return None
