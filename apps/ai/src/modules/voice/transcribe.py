@@ -9,7 +9,7 @@ import json
 import logging
 import re
 
-from src.core.exceptions import AppError
+from src.core.exceptions import AppError, UpstreamError
 from src.modules.usage.tokens import TokenUsage
 
 logger = logging.getLogger("sybeez.ai.voice.transcribe")
@@ -92,10 +92,19 @@ def parse_transcript(raw: str) -> tuple[str, str]:
 
 
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
-    """DashScope on the chat key. Gemini is not called."""
+    """DashScope first. Amazon Transcribe if that key cannot use a speech model. Gemini is not called."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
+    from src.modules.usage.tokens import estimate_usage
     from src.modules.voice.qwen_audio import transcribe_qwen
 
-    return await transcribe_qwen(audio, mime)
+    try:
+        return await transcribe_qwen(audio, mime)
+    except UpstreamError:
+        logger.warning("dashscope transcription unavailable")
+    from src.modules.voice.aws_speech import transcribe_clip
+
+    spoken, named = await transcribe_clip(audio, mime)
+    language = language_code(named, spoken)
+    return spoken, language, estimate_usage(named or "speech", spoken, model="transcribe", provider="aws")
 
