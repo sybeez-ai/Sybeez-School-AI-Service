@@ -19,6 +19,7 @@ from src.modules.teacher.router import router as teacher_router
 from src.modules.teacher_tools.router import router as teacher_tools_router
 from src.modules.translate.notice_router import router as notice_translate_router
 from src.modules.translate.router import router as translate_router
+from src.modules.usage.router import router as usage_router
 from src.modules.voice.router import router as voice_router
 
 
@@ -45,6 +46,7 @@ api_router.include_router(learning_router)
 api_router.include_router(teacher_router)
 api_router.include_router(teacher_tools_router)
 api_router.include_router(voice_router)
+api_router.include_router(usage_router)
 api_router.include_router(translate_router)
 api_router.include_router(notice_translate_router)
 api_router.include_router(reading_router)

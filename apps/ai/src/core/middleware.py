@@ -38,6 +38,7 @@ _SLOW_MODEL_PREFIXES = (
     "/api/v1/ai/voice/agent/plan",
     "/api/v1/ai/voice/agent/text",
     "/api/v1/ai/voice/agent/step",
+    "/api/v1/ai/voice/transcribe",
     "/api/v1/ai/classroom",
 )
 
@@ -64,9 +65,16 @@ def request_timeout_for_path(path: str) -> float:
     return settings.request_timeout_seconds
 
 
-# Platform-team sessions carry no school. The console chat and its typed tool step accept them.
+# Platform-team sessions carry no school. The console chat, its typed tool step, and live voice accept them.
 _PLATFORM_CHAT_PREFIX = "/api/v1/ai/platform-assistant/"
-_PLATFORM_STEP_PATH = "/api/v1/ai/voice/agent/step"
+_PLATFORM_EXACT_PATHS = {
+    "/api/v1/ai/voice/agent/step",
+    "/api/v1/ai/voice/agent/text",
+    "/api/v1/ai/voice/gemini/session",
+    "/api/v1/ai/voice/transcribe",
+    "/api/v1/ai/internal/ai-usage/backfill",
+    "/api/v1/internal/ai-usage/backfill",
+}
 _PLATFORM_ROLES = {"PLATFORM_ADMIN", "PLATFORM_STAFF"}
 
 
@@ -74,7 +82,7 @@ def _schoolless_allowed(path: str, role: str) -> bool:
     if role not in _PLATFORM_ROLES:
         return False
     normalized = normalize_path(path)
-    return normalized.startswith(_PLATFORM_CHAT_PREFIX) or normalized == _PLATFORM_STEP_PATH
+    return normalized.startswith(_PLATFORM_CHAT_PREFIX) or normalized in _PLATFORM_EXACT_PATHS
 
 
 def is_public_path(path: str, method: str) -> bool:

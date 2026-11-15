@@ -71,10 +71,24 @@ def test_setup_has_context_tools_and_safety():
     setup = build_gemini_live_setup(system_prompt=prompt)["setup"]
     text = setup["systemInstruction"]["parts"][0]["text"]
     assert "Class: 6B" in text and "elementary" in text and "child" in text
+    assert "Do not force English" in text
+    assert "detect the language being spoken" in text.lower()
     names = {d["name"] for d in setup["tools"][0]["functionDeclarations"]}
     assert {"navigate_to_page", "teach_on_board", "set_learning_mode"} <= names
     assert len(names) == len(TEACHING_FUNCTION_DECLARATIONS)
     assert "keys" not in str(setup).lower()
+
+
+def test_live_prompt_follows_the_speaker_for_every_portal():
+    student = build_system_prompt("Class: 6B", "middle", "/student/learning", "student")
+    staff = build_system_prompt("Class: 6B", None, "/teacher/home", "teacher")
+    platform = build_system_prompt("", None, "/platform/ai", "platform")
+    for prompt in (student, staff, platform):
+        assert "Detect the language being spoken" in prompt
+        assert "switch with them" in prompt
+        assert "reply in that same language" in prompt
+        assert "Do not force English" in prompt
+    assert "Current page: /platform/ai." in platform
 
 
 def test_to_openai_tools_lowercases_types_and_drops_bad_names():

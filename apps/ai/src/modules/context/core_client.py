@@ -4,6 +4,7 @@ AI must NOT query Core school tables directly.
 """
 
 import hashlib
+import logging
 import time
 from uuid import UUID
 
@@ -21,6 +22,8 @@ from src.modules.context.schemas import (
 
 # Successful parent-child lookups are reused briefly so opening a lesson does not
 # ask Core twice. Failures are not cached: a blip must not hide history for long.
+logger = logging.getLogger("sybeez.ai.core")
+
 _PARENT_CHILD_TTL = 15.0
 _parent_child_cache: dict[str, tuple[float, set[UUID]]] = {}
 
@@ -64,6 +67,25 @@ class CoreClient:
         if bearer:
             headers["Authorization"] = f"Bearer {bearer}"
         return headers
+
+    async def post_ai_usage(self, payload: dict, bearer_token: str | None) -> bool:
+        """Record one completion. Failures are reported to the caller as False and never include secrets."""
+        from src.modules.usage.tokens import post_body
+
+        body = post_body(payload)
+        if body is None:
+            return False
+        url = f"{self.settings.core_api_url.rstrip('/')}/api/v1/platform/ai/usage"
+        try:
+            async with httpx.AsyncClient(timeout=self.settings.upstream_timeout_seconds) as client:
+                resp = await client.post(url, headers=self._headers(bearer_token), json=body)
+        except httpx.HTTPError as exc:
+            logger.warning("ai usage record failed: %s", type(exc).__name__)
+            return False
+        if resp.status_code >= 400:
+            logger.warning("ai usage record rejected status=%s", resp.status_code)
+            return False
+        return True
 
     async def ping(self) -> bool:
         url = f"{self.settings.core_api_url.rstrip('/')}/health"
