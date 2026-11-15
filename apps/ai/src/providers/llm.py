@@ -6,6 +6,7 @@ import httpx
 
 from src.core.config import get_settings
 from src.core.exceptions import UpstreamError
+from src.modules.usage.tokens import estimate_usage, note_usage, usage_from_provider
 from src.providers.base import LLMProvider
 
 logger = logging.getLogger("sybeez.ai.llm")
@@ -14,14 +15,24 @@ logger = logging.getLogger("sybeez.ai.llm")
 class EchoLLM(LLMProvider):
     """Dev fallback when no provider API key is set."""
 
+    provider_name = "echo"
+    model = "echo"
+
     async def complete(self, *, system: str, user: str) -> str:
-        return (
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            return stopped
+        text = (
             "Let's make this simple.\n\n"
             "Based on what your teacher covered, here's a clear explanation.\n\n"
             f"You asked: {user[-400:]}\n\n"
             "The key idea is to connect the terms you already learned in class. "
             "If you want, I can give you a short practice question next."
         )
+        note_usage(self, estimate_usage(f"{system}\n{user}", text, model=self.model, provider=self.provider_name))
+        return text
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
         text = await self.complete(system=system, user=user)
@@ -61,6 +72,11 @@ class CompatibleChatLLM(LLMProvider):
         return [("custom", self.api_key, self.base_url, self.model)]
 
     async def complete(self, *, system: str, user: str) -> str:
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            return stopped
         last: httpx.HTTPError | None = None
         for provider, key, url, model in self._targets():
             try:
@@ -88,9 +104,22 @@ class CompatibleChatLLM(LLMProvider):
             )
             resp.raise_for_status()
             data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
+            note_usage(
+                self,
+                usage_from_provider(
+                    data, prompt=f"{system}\n{user}", reply=text or "", model=model, provider=self._provider_for(url)
+                ),
+            )
+            return text
 
     async def stream(self, *, system: str, user: str) -> AsyncIterator[str]:
+        from src.modules.usage.allowance import pin_model
+
+        stopped = pin_model(self)
+        if stopped:
+            yield stopped
+            return
         last: httpx.HTTPError | None = None
         for provider, key, url, model in self._targets():
             started = False
@@ -106,8 +135,16 @@ class CompatibleChatLLM(LLMProvider):
                     break
         raise UpstreamError("Language model request failed") from last
 
+    def _provider_for(self, url: str) -> str:
+        for provider, _key, base, _model in self._targets():
+            if base.rstrip("/") == url.rstrip("/"):
+                return provider
+        return self.settings.chat_provider or "unknown"
+
     async def _stream(self, key: str, url: str, model: str, *, system: str, user: str) -> AsyncIterator[str]:
         timeout = httpx.Timeout(self.settings.stream_timeout_seconds, connect=self.settings.upstream_timeout_seconds)
+        parts: list[str] = []
+        usage_payload: dict | None = None
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
@@ -132,9 +169,25 @@ class CompatibleChatLLM(LLMProvider):
                     if payload.strip() == "[DONE]":
                         break
                     chunk = json.loads(payload)
-                    delta = chunk["choices"][0].get("delta", {}).get("content")
+                    if chunk.get("usage") or chunk.get("usageMetadata"):
+                        usage_payload = chunk
+                    choices = chunk.get("choices") or []
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta", {}).get("content")
                     if delta:
+                        parts.append(delta)
                         yield delta
+        note_usage(
+            self,
+            usage_from_provider(
+                usage_payload,
+                prompt=f"{system}\n{user}",
+                reply="".join(parts),
+                model=model,
+                provider=self._provider_for(url),
+            ),
+        )
 
 
 def get_llm() -> LLMProvider:

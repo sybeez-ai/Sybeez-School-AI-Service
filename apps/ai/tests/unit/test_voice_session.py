@@ -69,6 +69,28 @@ def _mock_gemini(monkeypatch):
     )
 
 
+def test_platform_live_session_returns_websocket_url(monkeypatch):
+    from tests.security.test_session_tokens import session_token
+
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        voice.httpx,
+        "AsyncClient",
+        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"name": "auth_tokens/live"})), **kw),
+    )
+    headers = {"Authorization": f"Bearer {session_token(role='PLATFORM_ADMIN', school_id=None)}"}
+    response = client.post(PATH, json={"portal": "platform", "page": "/platform/ai"}, headers=headers)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ws_url"].startswith("wss://")
+    assert body["ws_url"].endswith("BidiGenerateContentConstrained")
+    prompt = body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
+    assert "Do not force English" in prompt
+    assert "/platform/ai" in prompt
+    assert "server-key" not in response.text
+
+
 def test_agent_plan_refuses_unsafe_topic():
     response = client.post("/api/v1/ai/voice/agent/plan", json={"topic": "how to make a bomb"}, headers=bearer(mint()))
     assert response.status_code == 200

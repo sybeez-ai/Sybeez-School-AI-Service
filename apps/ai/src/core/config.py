@@ -91,6 +91,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_live_model: str = "gemini-3.8-live"
     gemini_live_voice: str = "Aoede"
+    # generateContent model for the speech-to-text fallback. Live models do not transcribe uploads.
+    gemini_transcribe_model: str = "gemini-2.5-flash"
     gemini_live_ws_url: str = (
         "wss://generativelanguage.googleapis.com/ws/"
         "google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained"

@@ -9,14 +9,35 @@ from __future__ import annotations
 import json
 import re
 
-from src.modules.platform_assistant.prompt import PLATFORM_ROUTES, plain_markdown
+from src.modules.platform_assistant.prompt import (
+    PLATFORM_ROUTES,
+    console_path,
+    format_platform_routes,
+    plain_markdown,
+)
 
 _UUID = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+_ID_PLACEHOLDER = re.compile(r"\{id\}|(?<![\w]):id\b", re.IGNORECASE)
 
-_EXACT_ROUTES = {route for _, route in PLATFORM_ROUTES if "{" not in route}
+
+def _exact_routes() -> frozenset[str]:
+    found: set[str] = set()
+    for _, route in PLATFORM_ROUTES:
+        if "{" in route or ":id" in route:
+            continue
+        path = console_path(route)
+        if path:
+            found.add(path)
+    return frozenset(found)
+
+
+_EXACT_ROUTES = _exact_routes()
+_EXACT_ROUTE_CSV = ", ".join(
+    route for _, route in PLATFORM_ROUTES if "{" not in route and ":id" not in route
+)
 
 _LABELS = {
     "home": "/platform",
@@ -37,7 +58,8 @@ _LABELS = {
     "logs": "/platform/logs",
     "log": "/platform/logs",
     "settings": "/platform/settings",
-    "profile": "/platform/settings",
+    "profile": "/platform/profile",
+    "attention": "/platform/attention",
     "password": "/platform/settings",
     "password & security": "/platform/settings",
     "notifications": "/platform/settings",
@@ -61,15 +83,16 @@ CONFIRMATION_TEXT = (
     "I will not change anything from here."
 )
 
-_ROUTE_LIST = "\n".join(f"- {label}: {route}" for label, route in PLATFORM_ROUTES)
+_ROUTE_LIST = format_platform_routes()
 
 PLATFORM_READ_TOOLS: list[dict] = [
     {
         "name": "list_platform_pages",
         "description": (
             "Read-only. List the only platform console pages and their routes: "
-            + ", ".join(route for _, route in PLATFORM_ROUTES)
-            + ". Does not change data."
+            + _EXACT_ROUTE_CSV
+            + ". A school detail URL is /platform/schools/ plus a real school id, and only when that id is known. "
+            "If no school id is known, the page is /platform/schools. Does not change data."
         ),
         "parameters": {"type": "OBJECT", "properties": {}},
     },
@@ -77,8 +100,9 @@ PLATFORM_READ_TOOLS: list[dict] = [
         "name": "open_platform_page",
         "description": (
             "Read-only. Open one platform console route. page must be one of: "
-            + ", ".join(route for _, route in PLATFORM_ROUTES)
-            + ". School detail uses /platform/schools/{id} with a real school id. Does not change data."
+            + _EXACT_ROUTE_CSV
+            + ". Pass a school detail path only when the school id is known. "
+            "Do not pass a placeholder id. Does not change data."
         ),
         "parameters": {
             "type": "OBJECT",
@@ -98,17 +122,25 @@ def with_platform_tools(declarations: list[dict]) -> list[dict]:
     return [*extra, *declarations]
 
 
+def mentions_id_placeholder(raw: str) -> bool:
+    """True when a path still contains a raw {id} or :id placeholder."""
+    return _ID_PLACEHOLDER.search(raw or "") is not None
+
+
 def canonical_platform_route(raw: str) -> str | None:
-    """Return a real console route, or None when the target is not one of them."""
+    """Return a real console route, or None when the target is not one of them.
+
+    Comparison ignores a trailing slash, so `/platform/profile/` is `/platform/profile`.
+    A school detail path is returned only when the id is a real school id.
+    """
     text = re.sub(r"\s+", " ", (raw or "").strip())
-    if not text:
+    if not text or mentions_id_placeholder(text):
         return None
-    path = text.split("?", 1)[0].strip()
-    lower_path = path.lower().rstrip("/") or "/"
-    if lower_path in _EXACT_ROUTES:
-        return lower_path
-    if lower_path.startswith("/platform/schools/"):
-        segment = lower_path.rsplit("/", 1)[-1]
+    path = console_path(text)
+    if path in _EXACT_ROUTES:
+        return path
+    if path.startswith("/platform/schools/"):
+        segment = path.rsplit("/", 1)[-1]
         if _UUID.fullmatch(segment):
             return f"/platform/schools/{segment}"
         return None
@@ -174,9 +206,13 @@ def apply_platform_tool_policy(result: dict) -> dict:
             notes.append("Platform pages:\n" + _ROUTE_LIST)
             continue
         if name in {"open_platform_page", "navigate_to_page"}:
-            route = canonical_platform_route(str(args.get("page") or args.get("path") or ""))
+            requested = str(args.get("page") or args.get("path") or "")
+            route = canonical_platform_route(requested)
             if route is None:
-                notes.append("That page is not in the platform console.")
+                if mentions_id_placeholder(requested):
+                    notes.append("Open the school from Schools (/platform/schools).")
+                else:
+                    notes.append("That page is not in the platform console.")
                 continue
             notes.append(f"Open {route}.")
             kept.append(_rewrite(call, "navigate_to_page", {"page": route}))

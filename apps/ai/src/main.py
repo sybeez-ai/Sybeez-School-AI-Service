@@ -1,18 +1,19 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.router import api_router
+from src.api.router import ai_feature_gate, api_router
 from src.core.config import get_settings, validate_production_settings
 from src.core.database import assert_database_role_enforces_rls, engine
 from src.core.exceptions import AppError, error_body
 from src.core.health import liveness, readiness
 from src.core.logging import redact, setup_logging
 from src.core.middleware import SecurityMiddleware
+from src.modules.usage.router import backfill_ai_usage
 from src.version import APP_NAME, APP_VERSION
 
 logger = logging.getLogger("sybeez.ai")
@@ -81,6 +82,13 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=status_code, content=body)
 
     app.include_router(api_router, prefix="/api/v1/ai")
+    # Same handler as /api/v1/ai/internal/ai-usage/backfill. Callers use this path.
+    app.add_api_route(
+        "/api/v1/internal/ai-usage/backfill",
+        backfill_ai_usage,
+        methods=["POST"],
+        dependencies=[Depends(ai_feature_gate)],
+    )
     app.add_middleware(SecurityMiddleware)
     app.add_middleware(
         CORSMiddleware,

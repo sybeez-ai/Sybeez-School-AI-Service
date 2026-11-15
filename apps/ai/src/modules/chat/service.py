@@ -12,6 +12,8 @@ from src.modules.conversations.schemas import ConversationCreate
 from src.modules.conversations.service import ConversationService
 from src.modules.memory.service import MemoryService
 from src.modules.retrieval.service import RetrievalService
+from src.modules.usage.report import publish_usage
+from src.modules.usage.tokens import collect_usage, usage_start
 from src.providers.llm import get_llm, guarded_complete
 from src.shared.enums import MessageRole
 from src.shared.utils import load_prompt
@@ -76,18 +78,27 @@ class ChatService:
             f"{reply_cue(auth.role)}"
         )
 
+        started = usage_start(self.llm)
         try:
             reply = await guarded_complete(self.llm, system=system, user=user_prompt)
         except UpstreamError:
             logger.warning("chat model unavailable")
             reply = busy_reply(auth.role)
+            record = None
+        else:
+            record = collect_usage(self.llm, auth=auth, capability="CHAT", start=started)
+        meta: dict = {"sources": [h.source for h in retrieved.hits if h.source]}
+        if record:
+            meta["usage"] = record
         assistant = await self.conversations.append(
             auth=auth,
             conversation_id=conv.id,
             role=MessageRole.ASSISTANT,
             content=reply,
-            meta={"sources": [h.source for h in retrieved.hits if h.source]},
+            meta=meta,
         )
+        if record:
+            await publish_usage(record, bearer_token, assistant)
 
         track("ai_chat", school_id=str(school_id), conversation_id=str(conv.id))
         return ChatResponse(
@@ -136,6 +147,7 @@ class ChatService:
         )
 
         parts: list[str] = []
+        started = usage_start(self.llm)
         yield {"type": "meta", "conversation_id": str(conv.id)}
         try:
             async for token in self.llm.stream(system=system, user=user_prompt):
@@ -155,7 +167,14 @@ class ChatService:
             return
 
         full = "".join(parts)
+        record = collect_usage(self.llm, auth=auth, capability="CHAT", start=started)
         msg = await self.conversations.append(
-            auth=auth, conversation_id=conv.id, role=MessageRole.ASSISTANT, content=full
+            auth=auth,
+            conversation_id=conv.id,
+            role=MessageRole.ASSISTANT,
+            content=full,
+            meta={"usage": record} if record else None,
         )
+        if record:
+            await publish_usage(record, bearer_token, msg)
         yield {"type": "done", "message_id": str(msg.id), "conversation_id": str(conv.id)}

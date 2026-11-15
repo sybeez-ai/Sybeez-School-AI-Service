@@ -25,6 +25,8 @@ from src.modules.teacher.safety import normalise_grade_band
 from src.modules.teacher.schemas import ReplayAction, SessionDetail, SessionSummary, TurnResponse
 from src.modules.teacher.timeline import build_events, rescale_timing
 from src.modules.teacher.voice import get_voice
+from src.modules.usage.report import publish_usage
+from src.modules.usage.tokens import collect_usage, usage_start
 from src.providers.llm import get_llm
 from src.shared.enums import MessageRole
 from src.shared.utils import utcnow
@@ -135,7 +137,7 @@ class TeacherService:
             created_at=now,
             updated_at=now,
         )
-        return await self._turn(auth, record, body.message, learning, is_new=True)
+        return await self._turn(auth, record, body.message, learning, is_new=True, bearer=bearer)
 
     async def send(self, auth: AuthContext, session_id: UUID, message: str, bearer: str | None) -> TurnResponse:
         self._require_student(auth)
@@ -143,7 +145,7 @@ class TeacherService:
         record = await self._owned(auth, session_id)
         learning, fresh = await self._learning(auth, bearer, record.subject_id, record)
         self._apply_audience(record, learning, fresh)
-        return await self._turn(auth, record, message, learning, is_new=False)
+        return await self._turn(auth, record, message, learning, is_new=False, bearer=bearer)
 
     async def stream(self, auth: AuthContext, session_id: UUID, message: str, bearer: str | None, *, pace: bool = False):
         from src.modules.teacher.timeline import pace_events
@@ -260,7 +262,9 @@ class TeacherService:
             updated_at=record.updated_at,
         )
 
-    async def _turn(self, auth: AuthContext, record: SessionRecord, message: str, learning, *, is_new: bool) -> TurnResponse:
+    async def _turn(
+        self, auth: AuthContext, record: SessionRecord, message: str, learning, *, is_new: bool, bearer: str | None = None
+    ) -> TurnResponse:
         now = utcnow()
         record.updated_at = now
         user_message = MessageRecord(id=uuid4(), role="user", content=message, turn_index=None, created_at=now)
@@ -287,7 +291,9 @@ class TeacherService:
             "progress_updates": [],
             "check_choices": [],
         }
+        started = usage_start(self.llm)
         result = await run_teacher_turn(state, self.llm)
+        usage = collect_usage(self.llm, auth=auth, capability="CHAT", start=started)
         chat = result.get("chat_text") or ""
         topic = str((result.get("plan") or {}).get("topic") or record.topic or "")[:120]
         previous = record.pages[-1].title if record.pages else ""
@@ -335,7 +341,9 @@ class TeacherService:
             created_at=utcnow(),
         )
         record.messages.append(assistant)
-        await self._mirror(auth, record, assistant)
+        saved = await self._mirror(auth, record, assistant, meta={"usage": usage} if usage else None)
+        if usage:
+            await publish_usage(usage, bearer, saved)
         if is_new:
             await self.store.create(record)
         else:
@@ -427,9 +435,9 @@ class TeacherService:
                 found.score = update.get("score")
                 found.notes = update.get("notes")
 
-    async def _mirror(self, auth: AuthContext, record: SessionRecord, message: MessageRecord) -> None:
+    async def _mirror(self, auth: AuthContext, record: SessionRecord, message: MessageRecord, meta: dict | None = None):
         if self.conversations is None:
-            return
+            return None
         if record.conversation_id is None:
             conv = await self.conversations.create(
                 auth,
@@ -443,11 +451,12 @@ class TeacherService:
             )
             record.conversation_id = conv.id
         role = MessageRole.USER if message.role == "user" else MessageRole.ASSISTANT
-        await self.conversations.append(
+        return await self.conversations.append(
             auth=auth,
             conversation_id=record.conversation_id,
             role=role,
             content=message.content,
+            meta=meta,
         )
 
     async def _owned(self, auth: AuthContext, session_id: UUID) -> SessionRecord:
