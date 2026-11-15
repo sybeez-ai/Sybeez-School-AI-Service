@@ -13,7 +13,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN groupadd --gid 10001 app \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 app \
     && useradd --uid 10001 --gid app --create-home --shell /usr/sbin/nologin app
 
 COPY apps/ai/pyproject.toml apps/ai/alembic.ini ./
@@ -36,6 +39,7 @@ RUN pip install --no-cache-dir --upgrade pip \
         "email-validator>=2.2.0" \
         "python-multipart>=0.0.17" \
         "boto3>=1.35.0" \
+        "amazon-transcribe>=0.6.2" \
         "redis>=5.2.0" \
         "langgraph>=0.4.0" \
         "websockets>=13" \
