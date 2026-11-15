@@ -190,8 +190,36 @@ class PollyVoice:
         )
 
 
+class TeacherVoice:
+    """Nova 2 Sonic for English and Hindi. Polly keeps the lesson audible for other languages and when Sonic is unreachable."""
+
+    name = "nova-sonic"
+
+    def available(self) -> bool:
+        return True
+
+    async def synthesize(self, text: str) -> VoiceClip | None:
+        from src.modules.voice.sonic import sonic_voice, speak_narration
+
+        spoken = " ".join((text or "").split())
+        if not spoken:
+            return None
+        language = "hi" if any("\u0900" <= ch <= "\u097f" for ch in spoken) else "en"
+        if sonic_voice(language):
+            pcm = await asyncio.to_thread(speak_narration, spoken[:600], language)
+            if pcm and len(pcm) <= _MAX_PCM_BYTES:
+                return VoiceClip(
+                    provider="nova-sonic",
+                    mime_type="audio/pcm;rate=24000",
+                    audio_base64=base64.b64encode(pcm).decode("ascii"),
+                    duration_ms=max(1, int(len(pcm) / (24000 * 2) * 1000)),
+                    sample_rate=24000,
+                )
+        return await PollyVoice().synthesize(spoken)
+
+
 def get_voice():
     provider = get_settings().voice_provider.lower()
     if provider == "none":
         return NullVoice()
-    return PollyVoice()
+    return TeacherVoice()

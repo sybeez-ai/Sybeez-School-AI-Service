@@ -10,6 +10,7 @@
         "polly:SynthesizeSpeech",
         "bedrock:InvokeModel",
         "bedrock:InvokeModelWithResponseStream",
+        "bedrock:InvokeModelWithBidirectionalStream",
         "bedrock:Converse",
         "bedrock:ConverseStream"
       ],
