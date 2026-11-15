@@ -11,6 +11,7 @@ import json
 import math
 import os
 import struct
+import sys
 import urllib.error
 import urllib.request
 import wave
@@ -87,6 +88,8 @@ def main() -> None:
         ("intl-mm", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
         ("cn-speech", f"{CN}/compatible-mode/v1/audio/speech", "qwen3-tts-flash", "speech"),
     ]
+    asr_ok = False
+    tts_ok = False
     for name, url, model, shape in asr:
         if shape == "chat":
             body = {
@@ -109,6 +112,8 @@ def main() -> None:
             }
         status, code = _post(url, key, body)
         print(f"asr host={name} model={model} status={status} code={code}")
+        if status < 400:
+            asr_ok = True
     for name, url, model, shape in tts:
         if shape == "speech":
             body = {"model": model, "input": "Hello", "voice": "Cherry"}
@@ -116,6 +121,11 @@ def main() -> None:
             body = {"model": model, "input": {"text": "Hello", "voice": "Cherry", "language_type": "Auto"}}
         status, code = _post(url, key, body)
         print(f"tts host={name} model={model} status={status} code={code}")
+        if status < 400:
+            tts_ok = True
+    print(f"asr_ok={asr_ok} tts_ok={tts_ok}")
+    if not asr_ok or not tts_ok:
+        sys.exit(2)
 
 
 if __name__ == "__main__":
