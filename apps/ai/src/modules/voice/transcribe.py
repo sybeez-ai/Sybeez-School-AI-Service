@@ -1,4 +1,4 @@
-"""Speech-to-text for dictate and voice. Amazon Transcribe, not the browser and not Gemini.
+"""Speech-to-text for dictate and voice. DashScope, not the browser and not Gemini.
 
 Audio bytes are never logged.
 """
@@ -92,13 +92,10 @@ def parse_transcript(raw: str) -> tuple[str, str]:
 
 
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
-    """Amazon Transcribe in the School AWS account. Gemini is not called."""
+    """DashScope on the chat key. Gemini is not called."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
-    from src.modules.usage.tokens import estimate_usage
-    from src.modules.voice.aws_speech import transcribe_clip
+    from src.modules.voice.qwen_audio import transcribe_qwen
 
-    spoken, named = await transcribe_clip(audio, mime)
-    language = language_code(named, spoken)
-    return spoken, language, estimate_usage(named or "speech", spoken, model="transcribe", provider="aws")
+    return await transcribe_qwen(audio, mime)
 

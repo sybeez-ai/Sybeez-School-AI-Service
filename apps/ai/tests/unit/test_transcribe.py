@@ -1,4 +1,4 @@
-"""POST /api/v1/ai/voice/transcribe sends audio to Amazon Transcribe."""
+"""POST /api/v1/ai/voice/transcribe sends audio to DashScope, never Gemini."""
 
 import httpx
 from fastapi.testclient import TestClient
@@ -30,15 +30,17 @@ def test_transcribe_requires_auth_and_rejects_empty_audio():
     assert "Traceback" not in empty.text
 
 
-def test_transcribe_uses_aws_and_does_not_call_gemini(monkeypatch):
+def test_transcribe_uses_dashscope_and_does_not_call_gemini(monkeypatch):
     monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
 
     async def fake_clip(audio, mime):
         assert audio
         assert "webm" in (mime or "")
-        return "good morning", "en-IN"
+        from src.modules.usage.tokens import estimate_usage
 
-    monkeypatch.setattr("src.modules.voice.aws_speech.transcribe_clip", fake_clip)
+        return "good morning", "en", estimate_usage("speech", "good morning", model="qwen2-audio-instruct", provider="qwen")
+
+    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fake_clip)
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -70,7 +72,7 @@ def test_transcribe_failure_is_a_clear_error(monkeypatch):
         from src.core.exceptions import UpstreamError
         raise UpstreamError("Could not transcribe the audio")
 
-    monkeypatch.setattr("src.modules.voice.aws_speech.transcribe_clip", fail)
+    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fail)
     response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
     assert response.status_code == 502
     assert "Traceback" not in response.text
