@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field
 from src.api.dependencies import AuthDep
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
-from src.modules.platform_assistant.prompt import PLATFORM_ROLES, PLATFORM_SYSTEM, plain_markdown
+from src.modules.platform_assistant.prompt import (
+    PLATFORM_ROLES,
+    PLATFORM_SYSTEM,
+    plain_markdown,
+    platform_page_context,
+)
 from src.providers.llm import get_llm, guarded_complete
 
 router = APIRouter(prefix="/platform-assistant", tags=["platform-assistant"])
@@ -43,8 +48,9 @@ async def platform_chat(body: PlatformChatRequest, auth: AuthDep) -> PlatformCha
     if not await limiter.allow(f"platform-assistant:{auth.user_id}", limit=30):
         raise AppError("Too many messages, try again shortly", code="rate_limited", status_code=429)
     history = "\n".join(f"{t.role}: {t.content}" for t in body.history[-12:])
+    page_line = platform_page_context(body.page, limit=200)
     user = (
-        (f"Operator is on page: {body.page}\n\n" if body.page else "")
+        (f"{page_line}\n\n" if page_line else "")
         + (f"=== CONVERSATION ===\n{history}\n\n" if history else "")
         + f"user: {body.message}\n\nRespond as the platform AI assistant."
     )

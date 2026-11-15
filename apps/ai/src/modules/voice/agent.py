@@ -13,7 +13,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
-from src.modules.platform_assistant.prompt import PLATFORM_SYSTEM, is_platform_hint, plain_markdown
+from src.modules.platform_assistant.prompt import (
+    PLATFORM_SYSTEM,
+    is_platform_hint,
+    plain_markdown,
+    platform_page_context,
+)
 from src.modules.teacher.safety import assess, normalise_grade_band
 from src.providers.base import LLMProvider
 
@@ -132,7 +137,8 @@ async def text_answer(llm: LLMProvider, *, message: str, context_block: str = ""
                       page: str = "", student: bool = True) -> str:
     if not student:
         if is_platform_hint(None, page):
-            system = PLATFORM_SYSTEM + (f"\nCurrent page: {page[:100]}" if page else "")
+            page_line = platform_page_context(page, limit=100)
+            system = PLATFORM_SYSTEM + (f"\n{page_line}" if page_line else "")
             reply = (await llm.complete(system=system, user=message[:1500])).strip()
             return plain_markdown(reply)
         system = ASSISTANT_TEXT_SYSTEM + (f"\nCurrent page: {page[:100]}" if page else "")

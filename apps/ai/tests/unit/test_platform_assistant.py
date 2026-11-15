@@ -5,7 +5,7 @@ import json
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.modules.platform_assistant.prompt import PLATFORM_SYSTEM
+from src.modules.platform_assistant.prompt import PLATFORM_ROUTES, PLATFORM_SYSTEM, plain_markdown
 from src.modules.platform_assistant.router import SYSTEM
 from src.modules.platform_assistant.tools import (
     apply_platform_tool_policy,
@@ -154,3 +154,61 @@ def test_platform_step_offers_read_tools_and_blocks_writes(monkeypatch):
     assert "open_platform_page" in declared
     assert "/platform/schools" in seen["system_override"]
     assert "Invite User" not in seen["system_override"]
+    assert "not a valid route" not in seen["system_override"].lower()
+
+
+def test_profile_trailing_slash_is_accepted_and_prompt_does_not_call_the_url_invalid():
+    """`/platform/profile/` is the signed-in person's profile, not an invalid URL."""
+    assert canonical_platform_route("/platform/profile/") == "/platform/profile"
+    assert canonical_platform_route("/platform/profile") == "/platform/profile"
+    assert canonical_platform_route("profile") == "/platform/profile"
+    assert canonical_platform_route("/platform/settings/") == "/platform/settings"
+    assert canonical_platform_route("/platform/attention/") == "/platform/attention"
+    assert canonical_platform_route("/platform/schools/{id}") is None
+    assert canonical_platform_route("/platform/schools/:id") is None
+    routes = dict(PLATFORM_ROUTES)
+    assert routes["Profile"] == "/platform/profile"
+    assert routes["Settings"] == "/platform/settings"
+    assert routes["Attention"] == "/platform/attention"
+    assert routes["School detail"] == "/platform/schools/{id}"
+
+    lowered = PLATFORM_SYSTEM.lower()
+    assert "/platform/profile" in PLATFORM_SYSTEM
+    assert "name, email, and role" in lowered
+    assert "it is not settings" in lowered
+    assert "do not comment on the current url" in lowered
+    assert "do not say a route is invalid" in lowered
+    for phrase in (
+        "not a valid route",
+        "invalid route",
+        "url is invalid",
+        "url is not valid",
+        "current url is not",
+    ):
+        assert phrase not in lowered
+
+    voice = build_system_prompt("", None, "/platform/profile/", "platform")
+    voice_lower = voice.lower()
+    assert "not a valid route" not in voice_lower
+    assert "invalid route" not in voice_lower
+    assert "Current page: /platform/profile." in voice
+    assert "Current page: /platform/profile/" not in voice
+    assert "{id}" not in voice
+    assert ":id" not in voice
+
+    result = apply_platform_tool_policy({
+        "message": {
+            "role": "assistant",
+            "content": "The school is at /platform/schools/{id}.",
+            "tool_calls": [_call("open_platform_page", {"page": "/platform/profile/"})],
+        },
+        "provider": "test",
+        "model": "test",
+    })
+    call = result["message"]["tool_calls"][0]
+    assert json.loads(call["function"]["arguments"]) == {"page": "/platform/profile"}
+    assert "{id}" not in result["message"]["content"]
+    assert ":id" not in result["message"]["content"]
+    assert "/platform/schools" in result["message"]["content"]
+    assert "{id}" not in plain_markdown("Open /platform/schools/:id for the record.")
+    assert "Schools (/platform/schools)" in plain_markdown("Open /platform/schools/:id for the record.")

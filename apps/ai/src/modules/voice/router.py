@@ -22,7 +22,13 @@ from src.core.rate_limit import limiter
 from src.modules.chat.persona import busy_reply
 from src.modules.context.features import disabled_labels, prompt_block
 from src.modules.context.service import ContextService
-from src.modules.platform_assistant.prompt import PLATFORM_ROLES, PLATFORM_SYSTEM, PLATFORM_TOOL_NOTE, is_platform_hint
+from src.modules.platform_assistant.prompt import (
+    PLATFORM_ROLES,
+    PLATFORM_SYSTEM,
+    PLATFORM_TOOL_NOTE,
+    is_platform_hint,
+    platform_page_context,
+)
 from src.modules.platform_assistant.tools import apply_platform_tool_policy, with_platform_tools
 from src.modules.profile.router import profile_prompt_block
 from src.modules.voice import agent
@@ -228,7 +234,10 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
     # A student who labels the portal "platform" still gets the child-safety path.
     student = body.portal == "student" or (auth.role == "STUDENT" and is_platform_hint(body.portal, body.page))
     if platform:
-        extra = f"Portal: {body.portal[:24]}. Current page: {body.page[:100]}."
+        page_line = platform_page_context(body.page, limit=100)
+        extra = f"Portal: {body.portal[:24]}."
+        if page_line:
+            extra = f"{extra} {page_line}"
         declarations = with_platform_tools(list(body.tools))
         override = PLATFORM_SYSTEM + "\n" + PLATFORM_TOOL_NOTE
         grade_band = None

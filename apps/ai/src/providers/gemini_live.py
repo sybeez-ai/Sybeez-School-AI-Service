@@ -10,7 +10,7 @@ import logging
 from typing import Any
 
 from src.core.config import Settings, get_settings
-from src.modules.platform_assistant.prompt import PLATFORM_SYSTEM, is_platform_hint
+from src.modules.platform_assistant.prompt import PLATFORM_SYSTEM, is_platform_hint, platform_page_context
 
 logger = logging.getLogger(__name__)
 
@@ -203,8 +203,9 @@ def build_system_prompt(
     """Persona + per-user context (from Core, never trusted from the client)."""
     if is_platform_hint(portal, page):
         parts = [PLATFORM_SYSTEM]
-        if page:
-            parts.append(f"Operator is currently on page: {page[:120]}")
+        page_line = platform_page_context(page)
+        if page_line:
+            parts.append(page_line)
         return "\n\n".join(parts)
     portal = (portal or "student").strip().lower()
     if portal not in ALLOWED_PORTALS:
