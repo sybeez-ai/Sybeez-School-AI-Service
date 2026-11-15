@@ -26,25 +26,24 @@ _ASR_PROMPT = "Transcribe the speech. Reply with only the words spoken."
 _INTL = "https://dashscope-intl.aliyuncs.com"
 _CN = "https://dashscope.aliyuncs.com"
 
-# name, url, model, shape. The known-403 multimodal qwen3-asr-flash call is last
-# on each host so a working model is found first.
+# The live key is international. qwen3-asr-flash is Model.AccessDenied.
+# qwen-audio-turbo and qwen2-audio-instruct exist (400 when the body is wrong).
+# The China host rejects this key.
 ASR_CANDIDATES: tuple[tuple[str, str, str, str], ...] = (
+    ("intl-chat", f"{_INTL}/compatible-mode/v1/chat/completions", "qwen-audio-turbo", "chat"),
+    ("intl-chat", f"{_INTL}/compatible-mode/v1/chat/completions", "qwen2-audio-instruct", "chat"),
+    ("intl-audio", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-audio-turbo", "audio"),
+    ("intl-audio", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen2-audio-instruct", "audio"),
     ("intl-chat", f"{_INTL}/compatible-mode/v1/chat/completions", "qwen3-asr-flash", "chat"),
-    ("intl-mm", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen2-audio-instruct", "mm"),
-    ("intl-mm", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-audio-turbo", "mm"),
-    ("intl-chat", f"{_INTL}/compatible-mode/v1/chat/completions", "qwen2.5-omni-7b", "chat"),
-    ("intl-chat", f"{_INTL}/compatible-mode/v1/chat/completions", "qwen-omni-turbo", "chat"),
     ("intl-mm", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-asr-flash", "mm"),
-    ("cn-chat", f"{_CN}/compatible-mode/v1/chat/completions", "qwen3-asr-flash", "chat"),
-    ("cn-mm", f"{_CN}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-asr-flash", "mm"),
 )
 
+# qwen3-tts-flash is Model.AccessDenied and /audio/speech is 404 on the international host.
 TTS_CANDIDATES: tuple[tuple[str, str, str, str], ...] = (
-    ("intl-speech", f"{_INTL}/compatible-mode/v1/audio/speech", "qwen3-tts-flash", "speech"),
-    ("intl-mm", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
-    ("intl-speech", f"{_INTL}/compatible-mode/v1/audio/speech", "qwen-tts", "speech"),
-    ("cn-speech", f"{_CN}/compatible-mode/v1/audio/speech", "qwen3-tts-flash", "speech"),
-    ("cn-mm", f"{_CN}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
+    ("intl-tts", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-tts", "tts"),
+    ("intl-tts", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "cosyvoice-v2", "tts"),
+    ("intl-tts", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "cosyvoice-v1", "tts"),
+    ("intl-tts", f"{_INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
 )
 
 _asr_winner: tuple[str, str, str, str] | None = None
@@ -177,18 +176,21 @@ def _asr_body(model: str, shape: str, encoded: str) -> dict:
                 }
             ],
         }
-    return {
+    audio = f"data:audio/wav;base64,{encoded}"
+    body = {
         "model": model,
         "input": {
             "messages": [
                 {
                     "role": "user",
-                    "content": [{"audio": f"data:audio/wav;base64,{encoded}"}],
+                    "content": [{"audio": audio}, {"text": _ASR_PROMPT}],
                 }
             ]
         },
-        "parameters": {"asr_options": {"enable_lid": True}},
     }
+    if shape == "mm":
+        body["parameters"] = {"asr_options": {"enable_lid": True}}
+    return body
 
 
 def _tts_body(model: str, shape: str, text: str) -> dict:

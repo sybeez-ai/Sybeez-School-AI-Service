@@ -61,10 +61,12 @@ def _code(raw: bytes) -> str:
     if not isinstance(payload, dict):
         return ""
     code = payload.get("code") or ""
-    if not code and isinstance(payload.get("error"), dict):
-        code = payload["error"].get("code") or payload["error"].get("message") or ""
-    text = str(code).replace("\n", " ")
-    return text[:80]
+    message = payload.get("message") or ""
+    if isinstance(payload.get("error"), dict):
+        code = code or payload["error"].get("code") or ""
+        message = message or payload["error"].get("message") or ""
+    text = f"{code} {message}".replace("\n", " ").strip()
+    return text[:140]
 
 
 def main() -> None:
@@ -74,23 +76,22 @@ def main() -> None:
         return
     encoded = _tone()
     asr = [
-        ("intl-chat", f"{INTL}/compatible-mode/v1/chat/completions", "qwen3-asr-flash", "chat"),
-        ("intl-mm", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen2-audio-instruct", "mm"),
-        ("intl-mm", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-audio-turbo", "mm"),
-        ("intl-chat", f"{INTL}/compatible-mode/v1/chat/completions", "qwen2.5-omni-7b", "chat"),
-        ("intl-chat", f"{INTL}/compatible-mode/v1/chat/completions", "qwen-omni-turbo", "chat"),
+        ("intl-chat", f"{INTL}/compatible-mode/v1/chat/completions", "qwen-audio-turbo", "chat"),
+        ("intl-chat", f"{INTL}/compatible-mode/v1/chat/completions", "qwen2-audio-instruct", "chat"),
+        ("intl-audio", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-audio-turbo", "audio"),
+        ("intl-audio", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen2-audio-instruct", "audio"),
         ("intl-mm", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-asr-flash", "mm"),
-        ("cn-chat", f"{CN}/compatible-mode/v1/chat/completions", "qwen3-asr-flash", "chat"),
-        ("cn-mm", f"{CN}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-asr-flash", "mm"),
     ]
     tts = [
-        ("intl-speech", f"{INTL}/compatible-mode/v1/audio/speech", "qwen3-tts-flash", "speech"),
-        ("intl-mm", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
-        ("cn-speech", f"{CN}/compatible-mode/v1/audio/speech", "qwen3-tts-flash", "speech"),
+        ("intl-tts", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen-tts", "tts"),
+        ("intl-tts", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "cosyvoice-v2", "tts"),
+        ("intl-tts", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "cosyvoice-v1", "tts"),
+        ("intl-tts", f"{INTL}/api/v1/services/aigc/multimodal-generation/generation", "qwen3-tts-flash", "tts"),
     ]
     asr_ok = False
     tts_ok = False
     for name, url, model, shape in asr:
+        audio = f"data:audio/wav;base64,{encoded}"
         if shape == "chat":
             body = {
                 "model": model,
@@ -107,9 +108,10 @@ def main() -> None:
         else:
             body = {
                 "model": model,
-                "input": {"messages": [{"role": "user", "content": [{"audio": f"data:audio/wav;base64,{encoded}"}]}]},
-                "parameters": {"asr_options": {"enable_lid": True}},
+                "input": {"messages": [{"role": "user", "content": [{"audio": audio}, {"text": "Transcribe."}]}]},
             }
+            if shape == "mm":
+                body["parameters"] = {"asr_options": {"enable_lid": True}}
         status, code = _post(url, key, body)
         print(f"asr host={name} model={model} status={status} code={code}")
         if status < 400:
