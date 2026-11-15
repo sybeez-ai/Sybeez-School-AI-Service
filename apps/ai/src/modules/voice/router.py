@@ -206,6 +206,11 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
     except httpx.HTTPError as exc:
         logger.warning("gemini token request failed: %s", type(exc).__name__)
         raise UpstreamError("Voice provider unreachable") from None
+    if response.status_code == 402:
+        logger.warning("gemini token request rejected: status=402")
+        from src.modules.voice.transcribe import VOICE_CREDIT_MESSAGE
+
+        raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
     if response.status_code >= 400:
         logger.warning("gemini token request rejected: status=%s", response.status_code)
         raise UpstreamError("Voice provider rejected the session request")

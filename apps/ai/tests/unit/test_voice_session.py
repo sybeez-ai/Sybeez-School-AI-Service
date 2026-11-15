@@ -49,6 +49,21 @@ def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
     assert seen["body"]["fieldMask"] == "model,generationConfig,sessionResumption"
 
 
+def test_depleted_prepaid_credits_are_a_clear_402(monkeypatch):
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        voice.httpx,
+        "AsyncClient",
+        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(402, json={})), **kw),
+    )
+    response = client.post(PATH, headers=bearer(mint()))
+    assert response.status_code == 402
+    assert response.json()["error"]["code"] == "gemini_credits_depleted"
+    assert "prepaid credits are depleted" in response.json()["error"]["message"]
+    assert "server-key" not in response.text
+
+
 def test_upstream_rejection_is_502(monkeypatch):
     monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
     real = httpx.AsyncClient

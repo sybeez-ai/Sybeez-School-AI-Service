@@ -1,4 +1,4 @@
-"""POST /api/v1/ai/voice/transcribe sends audio to DashScope, never Gemini."""
+"""POST /api/v1/ai/voice/transcribe sends audio to Gemini, not Qwen ASR."""
 
 import httpx
 from fastapi.testclient import TestClient
@@ -30,30 +30,26 @@ def test_transcribe_requires_auth_and_rejects_empty_audio():
     assert "Traceback" not in empty.text
 
 
-def test_transcribe_uses_dashscope_and_does_not_call_gemini(monkeypatch):
+def test_transcribe_uses_gemini_and_not_qwen_asr(monkeypatch):
     monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
-
-    async def fake_clip(audio, mime):
-        assert audio
-        assert "webm" in (mime or "")
-        from src.modules.usage.tokens import estimate_usage
-
-        return "good morning", "en", estimate_usage("speech", "good morning", model="qwen2-audio-instruct", provider="qwen")
-
-    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fake_clip)
-    seen = {}
+    monkeypatch.setattr(get_settings(), "gemini_transcribe_model", "gemini-2.5-flash")
+    seen: dict[str, list[str]] = {"hosts": []}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        seen["host"] = request.url.host
+        seen["hosts"].append(request.url.host)
+        if "generativelanguage" in request.url.host:
+            assert request.headers.get("x-goog-api-key") == "gemini-key"
+            assert "qwen" not in request.url.path
+            return httpx.Response(
+                200,
+                json={"candidates": [{"content": {"parts": [{"text": '{"text": "good morning", "language": "en"}'}]}}]},
+            )
         if request.url.path.endswith("/api/v1/ai/usage"):
             return httpx.Response(200, json={"ok": True})
         return httpx.Response(500, json={})
 
     real = httpx.AsyncClient
-    monkeypatch.setattr(
-        "src.modules.context.core_client.httpx.AsyncClient",
-        lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs),
-    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     response = client.post(
         PATH,
         headers=bearer(mint()),
@@ -62,17 +58,36 @@ def test_transcribe_uses_dashscope_and_does_not_call_gemini(monkeypatch):
     assert response.status_code == 200, response.text
     assert response.json()["text"] == "good morning"
     assert response.json()["language"] == "en"
-    assert "generativelanguage" not in seen.get("host", "")
+    assert "generativelanguage.googleapis.com" in seen["hosts"]
     assert "gemini-key" not in response.text
 
 
+def test_depleted_gemini_credit_is_a_clear_402(monkeypatch):
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "generativelanguage" in request.url.host:
+            return httpx.Response(402, json={})
+        return httpx.Response(200, json={"ok": True})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
+    response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
+    assert response.status_code == 402
+    assert "Voice credit needed" in response.json()["error"]["message"]
+    assert "gemini-key" not in response.text
+
 
 def test_transcribe_failure_is_a_clear_error(monkeypatch):
-    async def fail(audio, mime):
-        from src.core.exceptions import UpstreamError
-        raise UpstreamError("Could not transcribe the audio")
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "gemini-key")
 
-    monkeypatch.setattr("src.modules.voice.qwen_audio.transcribe_qwen", fail)
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "generativelanguage" in request.url.host:
+            return httpx.Response(500, json={})
+        return httpx.Response(200, json={"ok": True})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
     response = client.post(PATH, headers=bearer(mint()), files={"audio": ("clip.webm", b"abc", "audio/webm")})
     assert response.status_code == 502
     assert "Traceback" not in response.text
