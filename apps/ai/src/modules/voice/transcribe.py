@@ -9,7 +9,7 @@ import json
 import logging
 import re
 
-from src.core.exceptions import AppError
+from src.core.exceptions import AppError, UpstreamError
 from src.modules.usage.tokens import TokenUsage
 
 logger = logging.getLogger("sybeez.ai.voice.transcribe")
