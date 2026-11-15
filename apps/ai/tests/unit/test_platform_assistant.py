@@ -208,6 +208,11 @@ def test_profile_trailing_slash_is_accepted_and_prompt_does_not_call_the_url_inv
     assert canonical_platform_route("/platform/schools/{id}") is None
     assert canonical_platform_route("/platform/schools/:id") is None
     routes = dict(PLATFORM_ROUTES)
+    assert "Team" not in routes
+    assert routes["Employees"] == "/platform/staff"
+    assert "/platform/team" not in PLATFORM_SYSTEM
+    assert canonical_platform_route("/platform/team") == "/platform/staff"
+    assert canonical_platform_route("team") == "/platform/staff"
     assert routes["Profile"] == "/platform/profile"
     assert routes["Settings"] == "/platform/settings"
     assert routes["Attention"] == "/platform/attention"
