@@ -13,11 +13,10 @@ def _headers(**claims) -> dict[str, str]:
 
 
 def test_platform_admin_without_school_reaches_platform_assistant(monkeypatch):
-    async def fake_complete(llm, *, system, user):
-        return "ok"
+    async def fake_step(**kwargs):
+        return {"message": {"role": "assistant", "content": "ok"}, "provider": "test", "model": "test"}
 
-    monkeypatch.setattr("src.modules.platform_assistant.router.guarded_complete", fake_complete)
-    monkeypatch.setattr("src.modules.platform_assistant.router.get_llm", lambda: None)
+    monkeypatch.setattr("src.modules.platform_assistant.router.agent.agent_step", fake_step)
     r = client.post(
         "/api/v1/ai/platform-assistant/chat",
         json={"message": "hello"},

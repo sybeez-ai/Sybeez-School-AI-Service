@@ -39,6 +39,7 @@ _SLOW_MODEL_PREFIXES = (
     "/api/v1/ai/voice/agent/text",
     "/api/v1/ai/voice/agent/step",
     "/api/v1/ai/voice/transcribe",
+    "/api/v1/ai/voice/speak",
     "/api/v1/ai/classroom",
 )
 
@@ -72,6 +73,7 @@ _PLATFORM_EXACT_PATHS = {
     "/api/v1/ai/voice/agent/text",
     "/api/v1/ai/voice/gemini/session",
     "/api/v1/ai/voice/transcribe",
+    "/api/v1/ai/voice/speak",
     "/api/v1/ai/internal/ai-usage/backfill",
     "/api/v1/internal/ai-usage/backfill",
 }

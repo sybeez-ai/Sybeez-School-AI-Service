@@ -5,7 +5,7 @@ import json
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.modules.platform_assistant.prompt import PLATFORM_ROUTES, PLATFORM_SYSTEM, plain_markdown
+from src.modules.platform_assistant.prompt import PLATFORM_ROUTES, PLATFORM_SYSTEM, PLATFORM_TOOL_NOTE, plain_markdown
 from src.modules.platform_assistant.router import SYSTEM
 from src.modules.platform_assistant.tools import (
     apply_platform_tool_policy,
@@ -42,7 +42,9 @@ def test_platform_prompt_lists_schools_and_does_not_mention_invite_user():
     for prompt in prompts:
         assert "/platform/schools" in prompt
         assert "Invite User" not in prompt
-    assert SYSTEM == PLATFORM_SYSTEM
+    assert SYSTEM.startswith(PLATFORM_SYSTEM)
+    assert "calling tools" in PLATFORM_TOOL_NOTE.lower()
+    assert "do not say you cannot create records" in PLATFORM_TOOL_NOTE.lower()
     voice = build_system_prompt("", None, "/platform/admins", "platform")
     assert "Add student" not in voice
     assert "/platform/settings" in voice
@@ -50,13 +52,20 @@ def test_platform_prompt_lists_schools_and_does_not_mention_invite_user():
 
 
 def test_platform_chat_strips_decorative_asterisks(monkeypatch):
-    async def fake_complete(llm, *, system, user):
-        assert "/platform/schools" in system
-        assert "Invite User" not in system
-        return "**Create the School**\n\nGo to **Schools** > **Add New School**."
+    async def fake_step(**kwargs):
+        assert "/platform/schools" in kwargs["system_override"]
+        assert "Invite User" not in kwargs["system_override"]
+        assert "do not say you cannot create records" in kwargs["system_override"].lower()
+        return {
+            "message": {
+                "role": "assistant",
+                "content": "**Create the School**\n\nGo to **Schools** > **Add New School**.",
+            },
+            "provider": "test",
+            "model": "test",
+        }
 
-    monkeypatch.setattr("src.modules.platform_assistant.router.guarded_complete", fake_complete)
-    monkeypatch.setattr("src.modules.platform_assistant.router.get_llm", lambda: None)
+    monkeypatch.setattr("src.modules.platform_assistant.router.agent.agent_step", fake_step)
     response = client.post(
         "/api/v1/ai/platform-assistant/chat",
         json={"message": "How do I add a school?", "page": "/platform"},
@@ -68,6 +77,37 @@ def test_platform_chat_strips_decorative_asterisks(monkeypatch):
     assert "*" not in reply
     assert "Create the School" in reply
     assert "Schools" in reply
+
+
+def test_platform_chat_returns_the_write_tool_for_the_card(monkeypatch):
+    async def fake_step(**kwargs):
+        names = [tool["name"] for tool in kwargs["declarations"]]
+        assert "invite_employee" in names
+        return {
+            "message": {
+                "role": "assistant",
+                "content": "Add this employee.",
+                "tool_calls": [_call("invite_employee", {"full_name": "Ada", "email": "ada@example.com"})],
+            },
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+        }
+
+    monkeypatch.setattr("src.modules.platform_assistant.router.agent.agent_step", fake_step)
+    response = client.post(
+        "/api/v1/ai/platform-assistant/chat",
+        json={
+            "message": "add one employee named Ada at ada@example.com",
+            "page": "/platform/staff",
+            "tools": [{"name": "invite_employee", "description": "Invite an employee", "parameters": {}}],
+        },
+        headers=_headers(role="PLATFORM_ADMIN", school_id=None),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["confirmation_required"] is True
+    assert body["executed"] is False
+    assert body["message"]["tool_calls"][0]["function"]["name"] == "invite_employee"
 
 
 def test_platform_read_tools_point_at_console_routes():
@@ -83,19 +123,20 @@ def test_platform_read_tools_point_at_console_routes():
     assert canonical_platform_route("users") is None
 
 
-def test_write_tool_requires_confirmation_and_does_not_execute():
+def test_write_tool_is_returned_for_the_confirmation_card():
     result = apply_platform_tool_policy({
         "message": {
             "role": "assistant",
-            "content": "Click **Invite User**.",
-            "tool_calls": [_call("click_element", {"label": "Save"})],
+            "content": "Add **Ada**.",
+            "tool_calls": [_call("invite_employee", {"full_name": "Ada", "email": "ada@example.com"})],
         },
         "provider": "test",
         "model": "test",
     })
     assert result["confirmation_required"] is True
     assert result["executed"] is False
-    assert "tool_calls" not in result["message"]
+    call = result["message"]["tool_calls"][0]
+    assert call["function"]["name"] == "invite_employee"
     assert "confirm" in result["message"]["content"].lower()
     assert "**" not in result["message"]["content"]
 
@@ -148,7 +189,7 @@ def test_platform_step_offers_read_tools_and_blocks_writes(monkeypatch):
     body = response.json()
     assert body["confirmation_required"] is True
     assert body["executed"] is False
-    assert "tool_calls" not in body["message"]
+    assert body["message"]["tool_calls"][0]["function"]["name"] == "type_in_element"
     declared = [tool["name"] for tool in seen["declarations"]]
     assert "list_platform_pages" in declared
     assert "open_platform_page" in declared

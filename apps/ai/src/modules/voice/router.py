@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 from fastapi import APIRouter, File, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from src.api.dependencies import AuthDep, BearerToken
@@ -135,6 +136,26 @@ async def transcribe(
     )
     await publish_usage(record, bearer)
     return {"text": text, "language": language}
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=600)
+
+
+@router.post("/speak")
+async def speak(body: SpeakRequest, auth: AuthDep):
+    """Speak a reply with the chat provider. Gemini Live is not called."""
+    if auth.school_id is None and auth.role not in PLATFORM_ROLES:
+        raise ForbiddenError("School context required")
+    if not await limiter.allow(f"voice-speak:{auth.user_id}", limit=30):
+        raise AppError("Slow down a little", code="rate_limited", status_code=429)
+    from src.modules.voice.qwen_audio import synthesize_qwen
+
+    audio = await synthesize_qwen(body.text)
+    if not audio:
+        raise AppError("Spoken reply is unavailable", code="voice_unavailable", status_code=503)
+    data, mime = audio
+    return Response(content=data, media_type=mime or "audio/mpeg")
 
 
 @router.post("/gemini/session")

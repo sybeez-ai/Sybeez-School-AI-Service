@@ -95,9 +95,17 @@ def parse_transcript(raw: str) -> tuple[str, str]:
 
 
 async def transcribe_audio(audio: bytes, mime: str | None) -> tuple[str, str, TokenUsage]:
+    """Prefer the chat provider (Qwen). Gemini is only the fallback; its prepaid key can be empty."""
     if not audio:
         raise AppError("Audio is empty", code="empty_audio", status_code=400)
     settings = get_settings()
+    if settings.qwen_chat_api_key:
+        from src.modules.voice.qwen_audio import transcribe_qwen
+
+        try:
+            return await transcribe_qwen(audio, mime)
+        except UpstreamError:
+            logger.warning("qwen transcription unavailable")
     if settings.gemini_api_key:
         return await _gemini(settings, audio, audio_mime(mime))
     candidates = settings.chat_candidates()

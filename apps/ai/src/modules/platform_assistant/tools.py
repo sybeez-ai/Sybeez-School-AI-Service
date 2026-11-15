@@ -1,7 +1,7 @@
-"""Read-only platform tools for the typed agent step.
+"""Platform tools for the typed agent step.
 
 Reads point at the real console routes. A tool that would change data is not
-run; the step returns a confirmation requirement instead.
+run here. The call is returned so the console can show a confirmation card.
 """
 
 from __future__ import annotations
@@ -74,14 +74,77 @@ _READ_ONLY = frozenset({
     "read_current_page",
     "scroll_page",
     "read_data",
+    "platform_report",
 })
 
-_READ_BLOCK = re.compile(r"password|token|secret|credential|invite|session", re.IGNORECASE)
+# Names the console knows how to run. Anything else is dropped.
+_CLIENT_ACTIONS = _READ_ONLY | frozenset({
+    "create_school",
+    "update_school",
+    "suspend_school",
+    "archive_school",
+    "delete_school",
+    "add_school_admin",
+    "invite_school_admin",
+    "remove_school_admin",
+    "create_plan",
+    "update_plan",
+    "delete_plan",
+    "set_school_feature",
+    "set_school_token_limit",
+    "set_group_token_limit",
+    "set_person_token_limit",
+    "invite_team_member",
+    "update_team_role",
+    "revoke_team_member",
+    "invite_employee",
+    "update_employee_role",
+    "revoke_employee",
+    "update_profile",
+    "change_password",
+    "set_notification_preference",
+    "set_school_trial",
+    "click_element",
+    "type_in_element",
+    "select_option",
+})
 
-CONFIRMATION_TEXT = (
-    "That would change platform data. Confirm it on the page before it runs. "
-    "I will not change anything from here."
+_WRITES = frozenset({
+    "create_school",
+    "update_school",
+    "suspend_school",
+    "archive_school",
+    "delete_school",
+    "add_school_admin",
+    "invite_school_admin",
+    "remove_school_admin",
+    "create_plan",
+    "update_plan",
+    "delete_plan",
+    "set_school_feature",
+    "set_school_token_limit",
+    "set_group_token_limit",
+    "set_person_token_limit",
+    "invite_team_member",
+    "update_team_role",
+    "revoke_team_member",
+    "invite_employee",
+    "update_employee_role",
+    "revoke_employee",
+    "update_profile",
+    "change_password",
+    "set_notification_preference",
+    "set_school_trial",
+    "type_in_element",
+    "select_option",
+})
+
+_MUTATING_CLICK = re.compile(
+    r"\b(create|add|new|update|edit|save|delete|remove|submit|send|pay|approve|revoke|disable|invite|assign|change|archive|suspend)\b",
+    re.IGNORECASE,
 )
+
+_READ_BLOCK = re.compile(r"password|token|secret|credential|invite|session", re.IGNORECASE)
 
 _ROUTE_LIST = format_platform_routes()
 
@@ -171,8 +234,15 @@ def _rewrite(call: dict, name: str, args: dict) -> dict:
     return {**call, "type": "function", "function": function}
 
 
-def _changes_data(call: dict) -> bool:
-    return _name(call) not in _READ_ONLY
+def _needs_confirm(call: dict) -> bool:
+    name = _name(call)
+    if name in _WRITES:
+        return True
+    if name != "click_element":
+        return False
+    args = _args(call)
+    label = f"{args.get('label') or ''} {args.get('ref') or ''}"
+    return _MUTATING_CLICK.search(label) is not None
 
 
 def _safe_platform_read(path: str) -> bool:
@@ -185,22 +255,20 @@ def _safe_platform_read(path: str) -> bool:
 
 
 def apply_platform_tool_policy(result: dict) -> dict:
-    """Keep read-only route tools. Replace any data-changing call with a confirmation."""
+    """Return tool calls for the console. Writes stay unexecuted until the card is confirmed."""
     message = dict(result.get("message") or {"role": "assistant", "content": ""})
     calls = list(message.get("tool_calls") or [])
     if not calls:
         message["content"] = plain_markdown(str(message.get("content") or ""))
-        return {**result, "message": message}
-    if any(_changes_data(call) for call in calls):
-        message.pop("tool_calls", None)
-        message["content"] = CONFIRMATION_TEXT
-        message["confirmation_required"] = True
-        return {**result, "message": message, "confirmation_required": True, "executed": False}
+        return {**result, "message": message, "confirmation_required": False, "executed": True}
 
     kept: list[dict] = []
     notes: list[str] = []
     for call in calls:
         name = _name(call)
+        if name not in _CLIENT_ACTIONS:
+            notes.append("That action is not available.")
+            continue
         args = _args(call)
         if name == "list_platform_pages":
             notes.append("Platform pages:\n" + _ROUTE_LIST)
@@ -231,4 +299,12 @@ def apply_platform_tool_policy(result: dict) -> dict:
         message["tool_calls"] = kept
     else:
         message.pop("tool_calls", None)
-    return {**result, "message": message, "confirmation_required": False, "executed": True}
+    needs_confirm = any(_needs_confirm(call) for call in kept)
+    if needs_confirm and "confirm" not in content.lower():
+        message["content"] = (content + "\nConfirm this on the card. Nothing changes until you do.").strip()
+    return {
+        **result,
+        "message": message,
+        "confirmation_required": needs_confirm,
+        "executed": not needs_confirm,
+    }

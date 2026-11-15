@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     # The production DashScope account is denied qwen-plus/max/turbo; qwen3.8-flash is the model it can use.
     qwen_chat_model: str = "qwen3.8-flash"
     qwen_voice_model: str = "qwen-audio-turbo"
+    # Same DashScope account as chat. Gemini Live is a separate prepaid key.
+    qwen_asr_model: str = "qwen3-asr-flash"
+    qwen_tts_model: str = "qwen3-tts-flash"
 
     # Gemini Live speaks narration when GEMINI_API_KEY is set. auto prefers it over Qwen.
     gemini_api_key: str = ""
