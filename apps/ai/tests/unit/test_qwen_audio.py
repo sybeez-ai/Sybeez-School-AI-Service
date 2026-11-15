@@ -38,7 +38,7 @@ async def test_asr_uses_the_first_model_that_returns_words(monkeypatch):
     assert language == "en"
     assert usage.provider == "qwen"
     assert usage.model == "qwen2-audio-instruct"
-    assert seen[0] == "qwen3-asr-flash"
+    assert seen[0] == "qwen-audio-turbo"
     assert "qwen2-audio-instruct" in seen
     assert qwen_audio._asr_winner is not None
     assert qwen_audio._asr_winner[2] == "qwen2-audio-instruct"
