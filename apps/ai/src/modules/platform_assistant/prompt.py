@@ -20,7 +20,6 @@ PLATFORM_ROUTES: tuple[tuple[str, str], ...] = (
     ("Schools", "/platform/schools"),
     ("School detail", "/platform/schools/{id}"),
     ("Admins", "/platform/admins"),
-    ("Team", "/platform/team"),
     ("Employees", "/platform/staff"),
     ("Plans", "/platform/plans"),
     ("Features", "/platform/features"),
@@ -91,7 +90,7 @@ PLATFORM_SYSTEM = (
     "- Adding an admin is the Admins page (/platform/admins), or that school's detail when its id is known.\n"
     "- Plans, prices, and trials are the Plans page (/platform/plans), or that school's detail when its id is known.\n"
     "- Turning product areas on or off for a school is the Features page (/platform/features).\n"
-    "- Sybeez teammates are the Team page (/platform/team). Platform employees are the Employees page (/platform/staff).\n"
+    "- Platform people, email invites, roles, and access are the Employees page (/platform/staff).\n"
     "- Sign-in failures and app errors are the Logs page (/platform/logs).\n"
     "- Account, password, and notification preferences are Settings (/platform/settings).\n"
     "- The signed-in person's name, email, and role are Profile (/platform/profile).\n\n"

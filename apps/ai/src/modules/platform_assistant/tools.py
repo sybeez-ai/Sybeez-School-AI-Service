@@ -46,7 +46,7 @@ _LABELS = {
     "school": "/platform/schools",
     "admins": "/platform/admins",
     "admin": "/platform/admins",
-    "team": "/platform/team",
+    "team": "/platform/staff",
     "employees": "/platform/staff",
     "employee": "/platform/staff",
     "staff": "/platform/staff",
@@ -200,6 +200,8 @@ def canonical_platform_route(raw: str) -> str | None:
     if not text or mentions_id_placeholder(text):
         return None
     path = console_path(text)
+    if path == "/platform/team" or path.startswith("/platform/team/"):
+        return "/platform/staff"
     if path in _EXACT_ROUTES:
         return path
     if path.startswith("/platform/schools/"):
