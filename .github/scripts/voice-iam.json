@@ -7,7 +7,11 @@
       "Action": [
         "transcribe:StartStreamTranscription",
         "transcribe:StartStreamTranscriptionWebSocket",
-        "polly:SynthesizeSpeech"
+        "polly:SynthesizeSpeech",
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+        "bedrock:Converse",
+        "bedrock:ConverseStream"
       ],
       "Resource": "*"
     }

@@ -1,7 +1,7 @@
-"""Server side of the AI teacher/assistant agent: guarded lesson plans and text fallback (Qwen).
+"""Server side of the AI teacher/assistant agent.
 
-Voice runs browser <-> Gemini Live. Everything here is the part Gemini Live should not
-decide alone: child safety, lesson structure and a cheap text path when voice is down.
+Chat runs on Amazon Bedrock Nova Lite. Speech is Transcribe and Polly.
+Gemini is not called. This module still owns child safety and lesson structure.
 """
 
 from __future__ import annotations
@@ -258,9 +258,27 @@ async def agent_step(*, messages: list[dict], declarations: list[dict], system_e
     if tools:
         body_base["tools"] = tools
         body_base["tool_choice"] = "auto"
-    # Qwen first (Silver's rule); other keyed providers only as a reported fallback.
-    candidates = sorted(settings.chat_candidates(), key=lambda c: c[0] != "qwen")
+    # Bedrock Nova Lite first. A keyed HTTP provider is only the fallback when Bedrock refuses the call.
     last_exc: Exception | None = None
+    if settings.bedrock_chat:
+        try:
+            from src.providers.bedrock_chat import converse_reply
+
+            text, calls, usage, model = await converse_reply(system, messages, declarations if tools else [])
+            out = {"role": "assistant", "content": text}
+            if student:
+                calls, dropped_earth = trim_student_tools(calls, topic_text=topic_text, already_used=used)
+                if dropped_earth and UNAVAILABLE_3D not in out["content"]:
+                    out["content"] = (out["content"] + " " + UNAVAILABLE_3D).strip()
+            if calls:
+                out["tool_calls"] = calls
+            elif student:
+                out["content"] = refusal_for(out["content"], grade_band) or out["content"]
+            return {"message": out, "provider": "bedrock", "model": model, "usage": usage}
+        except Exception as exc:
+            logger.warning("bedrock agent step failed: %s", type(exc).__name__)
+            last_exc = exc
+    candidates = settings.chat_candidates()
     for provider, key, url, model in candidates:
         body = {**body_base, "model": model}
         if "dashscope" in url:

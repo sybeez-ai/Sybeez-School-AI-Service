@@ -1,8 +1,7 @@
 """Narration audio.
 
-Gemini Live is used when GEMINI_API_KEY is set. Qwen is the fallback when only
-QWEN_VOICE_API_KEY is set. Teaching still streams narration text when neither
-provider returns audio.
+Spoken replies use Amazon Polly. Gemini is not called. Teaching still streams
+the narration text when Polly returns no audio.
 """
 
 import asyncio
@@ -183,13 +182,38 @@ class QwenVoice:
         )
 
 
+class PollyVoice:
+    name = "polly"
+
+    def available(self) -> bool:
+        return True
+
+    async def synthesize(self, text: str) -> VoiceClip | None:
+        from src.modules.voice.aws_speech import synthesize_speech
+
+        spoken = " ".join((text or "").split())
+        if not spoken:
+            return None
+        audio = await asyncio.to_thread(synthesize_speech, spoken[:600])
+        if not audio:
+            return None
+        data, mime = audio
+        if not data or len(data) > _MAX_PCM_BYTES:
+            return None
+        return VoiceClip(
+            provider="polly",
+            mime_type=mime or "audio/mpeg",
+            audio_base64=base64.b64encode(data).decode("ascii"),
+            duration_ms=max(1, len(spoken.split()) * 380),
+            sample_rate=0,
+        )
+
+
 def get_voice():
     settings = get_settings()
     provider = settings.voice_provider.lower()
     if provider == "none":
         return NullVoice()
-    if provider in {"auto", "gemini_live"} and settings.has_gemini_live:
-        return GeminiLiveVoice()
-    if provider in {"auto", "qwen"} and settings.has_qwen_voice:
+    if provider == "qwen" and settings.has_qwen_voice:
         return QwenVoice()
-    return NullVoice()
+    return PollyVoice()

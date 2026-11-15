@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 
 from src.core.config import get_settings
 from src.main import app
-from src.modules.voice import router as voice
 from tests.security.jwks import bearer, mint
 
 client = TestClient(app)
@@ -14,96 +13,39 @@ def test_requires_auth():
     assert client.post(PATH).status_code == 401
 
 
-def test_unconfigured_is_503(monkeypatch):
+def test_missing_gemini_key_still_opens_aws_voice(monkeypatch):
     monkeypatch.setattr(get_settings(), "gemini_api_key", "")
     response = client.post(PATH, headers=bearer(mint()))
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "voice_unavailable"
+    assert response.status_code == 200
+    assert response.json()["session"]["provider"] == "aws"
 
 
-def test_mints_ephemeral_token_without_leaking_key(monkeypatch):
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    seen = {}
-
+def test_voice_session_uses_aws_and_does_not_call_gemini(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
-        if "generativelanguage" not in request.url.host:
-            return httpx.Response(503, json={})  # Core context is best-effort
-        seen["key"] = request.headers.get("x-goog-api-key")
-        seen["url"] = str(request.url)
-        seen["body"] = __import__("json").loads(request.content)
-        return httpx.Response(200, json={"name": "auth_tokens/abc"})
+        assert "generativelanguage" not in request.url.host
+        return httpx.Response(500, json={})
 
     real = httpx.AsyncClient
-    monkeypatch.setattr(voice.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
     response = client.post(PATH, headers=bearer(mint()))
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["value"] == "auth_tokens/abc"
-    assert body["ws_url"].endswith("BidiGenerateContentConstrained")
-    assert "server-key" not in response.text
-    assert body["setup"]["setup"]["tools"][0]["functionDeclarations"]
-    assert "child" in body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
-    assert body["session"]["max_minutes"] == voice.SESSION_MINUTES
-    assert seen["key"] == "server-key" and seen["url"] == voice.TOKEN_URL
-    # Regression: without a fieldMask Gemini drops the client prompt and tools.
-    assert seen["body"]["fieldMask"] == "model,generationConfig,sessionResumption"
+    assert body["session"]["provider"] == "aws"
+    assert body["session"]["engine"] == "transcribe-polly"
+    assert "nova-lite" in body["session"]["model"]
+    assert body["ws_url"] == ""
+    assert "generativelanguage" not in response.text
 
 
-def test_depleted_prepaid_credits_are_a_clear_402(monkeypatch):
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        voice.httpx,
-        "AsyncClient",
-        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(402, json={})), **kw),
-    )
-    response = client.post(PATH, headers=bearer(mint()))
-    assert response.status_code == 402
-    assert response.json()["error"]["code"] == "gemini_credits_depleted"
-    assert "prepaid credits are depleted" in response.json()["error"]["message"]
-    assert "server-key" not in response.text
-
-
-def test_upstream_rejection_is_502(monkeypatch):
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        voice.httpx,
-        "AsyncClient",
-        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={})), **kw),
-    )
-    assert client.post(PATH, headers=bearer(mint())).status_code == 502
-
-
-def _mock_gemini(monkeypatch):
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        voice.httpx,
-        "AsyncClient",
-        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"name": "auth_tokens/x"})), **kw),
-    )
-
-
-def test_platform_live_session_returns_websocket_url(monkeypatch):
+def test_platform_voice_session_is_aws():
     from tests.security.test_session_tokens import session_token
 
-    monkeypatch.setattr(get_settings(), "gemini_api_key", "server-key")
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        voice.httpx,
-        "AsyncClient",
-        lambda **kw: real(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"name": "auth_tokens/live"})), **kw),
-    )
     headers = {"Authorization": f"Bearer {session_token(role='PLATFORM_ADMIN', school_id=None)}"}
     response = client.post(PATH, json={"portal": "platform", "page": "/platform/ai"}, headers=headers)
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["ws_url"].startswith("wss://")
-    assert body["ws_url"].endswith("BidiGenerateContentConstrained")
-    prompt = body["setup"]["setup"]["systemInstruction"]["parts"][0]["text"]
-    assert "Do not force English" in prompt
-    assert "/platform/ai" in prompt
-    assert "server-key" not in response.text
+    assert body["session"]["provider"] == "aws"
+    assert body["setup"]["engine"] == "transcribe-polly"
 
 
 def test_agent_plan_refuses_unsafe_topic():
