@@ -80,6 +80,22 @@ async def test_bad_primary_key_fails_over_to_fallback_provider(monkeypatch):
             return httpx.Response(401, request=req)
         return httpx.Response(200, request=req, json={"choices": [{"message": {"content": "ok"}}]})
 
+    def fake_stream(self, method, url, headers=None, json=None):
+        # qwen3.8-flash is streamed. A rejected stream must fail over to the next provider.
+        calls.append(url)
+        req = httpx.Request(method, url)
+        response = httpx.Response(401, request=req)
+
+        class _Denied:
+            async def __aenter__(self):
+                return response
+
+            async def __aexit__(self, *_args):
+                return False
+
+        return _Denied()
+
     monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr(httpx.AsyncClient, "stream", fake_stream)
     assert await llm_module.CompatibleChatLLM().complete(system="s", user="u") == "ok"
     assert len(calls) == 2 and "deepseek" in calls[1]
