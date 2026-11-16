@@ -258,3 +258,6 @@ def test_role_is_bound_for_backend_role_policies():
     statements = tenant_context_statements(SCHOOL_A, USER_A, "STUDENT")
     assert statements[2] == ("SELECT set_config('app.role', :role, true)", {"role": "STUDENT"})
     assert len(tenant_context_statements(SCHOOL_A, USER_A)) == 2
+    bypassed = tenant_context_statements(SCHOOL_A, USER_A, "SERVICE", bypass=True)
+    assert ("SELECT set_config('app.rls_bypass', :bypass, true)", {"bypass": "on"}) in bypassed
+    assert ("SELECT set_config('app.role', :role, true)", {"role": "SERVICE"}) in bypassed

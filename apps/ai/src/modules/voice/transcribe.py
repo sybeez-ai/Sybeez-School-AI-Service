@@ -22,6 +22,7 @@ logger = logging.getLogger("sybeez.ai.voice.transcribe")
 _TRANSCRIBE_PROMPT = (
     'Transcribe the speech in this audio. Reply with only a JSON object '
     '{"text": "<words spoken>", "language": "<short code>"}. '
+    "Keep the words in the language that was spoken. Do not translate them. "
     "language is the language being spoken, a short code such as en, hi, ta, te, ml, kn, bn, mr, gu, pa, or ur. "
     "If there is no speech, set text to an empty string and language to en."
 )
