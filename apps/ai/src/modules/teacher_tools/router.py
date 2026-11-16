@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header
 
-from src.api.dependencies import AuthDep
+from src.api.dependencies import AuthDep, BearerToken
 from src.core.config import get_settings
 from src.core.exceptions import AppError, ForbiddenError
 from src.core.rate_limit import limiter
@@ -23,12 +23,12 @@ async def _guard(auth, token: str | None, bucket: str, limit: int) -> None:
 
 
 @router.post("/draft", response_model=S.DraftResponse)
-async def draft(body: S.DraftRequest, auth: AuthDep, x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None):
+async def draft(body: S.DraftRequest, auth: AuthDep, bearer: BearerToken, x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None):
     await _guard(auth, x_internal_token, "draft", 20)
-    return await S.draft(body)
+    return await S.draft(body, auth=auth, bearer=bearer)
 
 
 @router.post("/grade", response_model=S.GradeResponse)
-async def grade(body: S.GradeRequest, auth: AuthDep, x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None):
+async def grade(body: S.GradeRequest, auth: AuthDep, bearer: BearerToken, x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None):
     await _guard(auth, x_internal_token, "grade", 120)
-    return await S.grade(body)
+    return await S.grade(body, auth=auth, bearer=bearer)

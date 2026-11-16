@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header
 
-from src.api.dependencies import AuthDep
+from src.api.dependencies import AuthDep, BearerToken
 from src.core.config import get_settings
 from src.core.exceptions import ForbiddenError
 from src.modules.mcq.schemas import McqGenerateRequest, McqGenerateResponse
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/mcq", tags=["mcq"])
 async def generate_mcq(
     body: McqGenerateRequest,
     auth: AuthDep,
+    bearer: BearerToken,
     x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None,
 ):
     """Draft MCQs for a teacher to review. Called by Core, which enforces the school's monthly cap."""
@@ -24,4 +25,4 @@ async def generate_mcq(
     expected = get_settings().core_internal_token
     if not x_internal_token or not hmac.compare_digest(x_internal_token, expected):
         raise ForbiddenError("Question generation is only available through the school platform")
-    return await McqService().generate(body)
+    return await McqService().generate(body, auth=auth, bearer=bearer)

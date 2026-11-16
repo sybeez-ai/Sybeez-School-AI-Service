@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from src.core.exceptions import AppError, UpstreamError
 from src.modules.mcq.service import extract_json
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import EchoLLM, get_llm, guarded_complete
 
 DRAFT_SYSTEM = (
@@ -134,31 +136,39 @@ def parse_grade(data: object, body: GradeRequest) -> GradeResponse | None:
     )
 
 
-async def draft(body: DraftRequest) -> DraftResponse:
+async def draft(body: DraftRequest, *, auth=None, bearer: str | None = None) -> DraftResponse:
     llm = _llm()
+    started = usage_start(llm)
     user = (
         f"kind={body.kind}\nTopic: {body.topic}\nSubject: {body.subject_name or 'not specified'}\n"
         f"Class: {body.class_label or 'not specified'}\nLesson length: {body.duration_minutes} minutes\n"
         f"Language: {body.language}\n" + (f"<notes>\n{body.notes}\n</notes>" if body.notes else "")
     )
-    for attempt in range(2):
-        raw = await guarded_complete(llm, system=DRAFT_SYSTEM, user=user if attempt == 0 else "Reply ONLY with the JSON object.\n" + user)
-        parsed = parse_draft(extract_json(raw), body.kind)
-        if parsed:
-            return parsed
-    raise UpstreamError("The model did not return a usable draft", code="draft_failed")
+    try:
+        for attempt in range(2):
+            raw = await guarded_complete(llm, system=DRAFT_SYSTEM, user=user if attempt == 0 else "Reply ONLY with the JSON object.\n" + user)
+            parsed = parse_draft(extract_json(raw), body.kind)
+            if parsed:
+                return parsed
+        raise UpstreamError("The model did not return a usable draft", code="draft_failed")
+    finally:
+        await publish_noted(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
 
 
-async def grade(body: GradeRequest) -> GradeResponse:
+async def grade(body: GradeRequest, *, auth=None, bearer: str | None = None) -> GradeResponse:
     llm = _llm()
+    started = usage_start(llm)
     user = (
         f"max_marks: {body.max_marks}\nLanguage of feedback: {body.language}\nQuestion: {body.question}\n"
         f"Rubric: {body.rubric or 'none given - use sound subject judgement'}\n"
         f"<student_answer>\n{body.answer}\n</student_answer>"
     )
-    for attempt in range(2):
-        raw = await guarded_complete(llm, system=GRADE_SYSTEM, user=user if attempt == 0 else "Reply ONLY with the JSON object.\n" + user)
-        parsed = parse_grade(extract_json(raw), body)
-        if parsed:
-            return parsed
-    raise UpstreamError("The model did not return a usable grading suggestion", code="grade_failed")
+    try:
+        for attempt in range(2):
+            raw = await guarded_complete(llm, system=GRADE_SYSTEM, user=user if attempt == 0 else "Reply ONLY with the JSON object.\n" + user)
+            parsed = parse_grade(extract_json(raw), body)
+            if parsed:
+                return parsed
+        raise UpstreamError("The model did not return a usable grading suggestion", code="grade_failed")
+    finally:
+        await publish_noted(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)

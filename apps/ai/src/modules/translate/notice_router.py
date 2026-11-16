@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header
 
-from src.api.dependencies import AuthDep
+from src.api.dependencies import AuthDep, BearerToken
 from src.core.config import get_settings
 from src.core.exceptions import ForbiddenError
 from src.core.rate_limit import limiter
@@ -17,6 +17,7 @@ router = APIRouter(prefix="/translate", tags=["translate"])
 async def translate_notice(
     body: TranslateRequest,
     auth: AuthDep,
+    bearer: BearerToken,
     x_internal_token: Annotated[str | None, Header(alias="X-Internal-Token")] = None,
 ):
     """Translate a school notice. Called only by Core, which owns caching, review and audit."""
@@ -29,4 +30,4 @@ async def translate_notice(
         from src.core.exceptions import AppError
 
         raise AppError("Too many translations, try again shortly", code="rate_limited", status_code=429)
-    return await TranslateService().translate(body)
+    return await TranslateService().translate(body, auth=auth, bearer=bearer)

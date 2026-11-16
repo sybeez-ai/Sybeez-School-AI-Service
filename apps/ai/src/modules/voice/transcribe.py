@@ -146,6 +146,15 @@ async def _gemini(settings, audio: bytes, mime: str) -> tuple[str, str, TokenUsa
         logger.warning("gemini transcription response was not usable")
         raise UpstreamError("Could not transcribe the audio") from None
     text, language = parse_transcript(str(raw))
-    usage = usage_from_provider(payload, prompt=_TRANSCRIBE_PROMPT, reply=text, model=model, provider="gemini")
+    # Live models do not accept generateContent uploads. The HTTP call stays on
+    # gemini_transcribe_model. The stored row is Gemini 3.8 Live, which is the
+    # only Gemini column on the AI page, and the counts are the response's usageMetadata.
+    usage = usage_from_provider(
+        payload,
+        prompt=_TRANSCRIBE_PROMPT,
+        reply=text,
+        model=settings.gemini_live_model,
+        provider="gemini",
+    )
     return text, language, usage
 

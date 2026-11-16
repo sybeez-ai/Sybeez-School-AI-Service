@@ -258,22 +258,39 @@ async def agent_step(*, messages: list[dict], declarations: list[dict], system_e
     if tools:
         body_base["tools"] = tools
         body_base["tool_choice"] = "auto"
+    from src.providers.llm import dashscope_flags, parse_openai_sse
+
     # Qwen first (Silver's rule); other keyed providers only as a reported fallback.
     candidates = sorted(settings.chat_candidates(), key=lambda c: c[0] != "qwen")
     last_exc: Exception | None = None
     for provider, key, url, model in candidates:
-        body = {**body_base, "model": model}
-        if "dashscope" in url:
-            body["enable_thinking"] = False
+        flags = dashscope_flags(url, model)
+        body = {**body_base, "model": model, **flags}
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(settings.llm_timeout_seconds, connect=settings.upstream_timeout_seconds)) as client:
-                resp = await client.post(f"{url.rstrip('/')}/chat/completions",
-                                         headers={"Authorization": f"Bearer {key}"}, json=body)
-                resp.raise_for_status()
-                data = resp.json()
-                msg = data["choices"][0]["message"]
+                if body.get("stream"):
+                    async with client.stream(
+                        "POST",
+                        f"{url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {key}"},
+                        json=body,
+                    ) as resp:
+                        resp.raise_for_status()
+                        msg = parse_openai_sse((await resp.aread()).decode())
+                        provider_usage = msg.pop("usage", None) if isinstance(msg, dict) else None
+                        data = {"usage": provider_usage} if isinstance(provider_usage, dict) else {}
+                else:
+                    resp = await client.post(
+                        f"{url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {key}"},
+                        json=body,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    msg = data["choices"][0]["message"]
         except Exception as exc:  # next provider
-            logger.warning("agent step failed provider=%s: %s", provider, type(exc).__name__)
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            logger.warning("agent step failed provider=%s status=%s: %s", provider, status, type(exc).__name__)
             last_exc = exc
             continue
         raw_reply = msg.get("content") or ""

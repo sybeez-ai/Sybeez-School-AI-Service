@@ -7,6 +7,8 @@ from src.core.exceptions import UpstreamError
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.practice.schemas import PracticeQuestion, PracticeRequest, PracticeResponse
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
 
@@ -31,11 +33,13 @@ class PracticeService:
             f"Topic: {topic}\nDifficulty: {body.difficulty.value}\nCount: {body.count}\n\n"
             "Return JSON array of objects with keys: prompt, question_type, hint."
         )
+        started = usage_start(self.llm)
         try:
             raw = await guarded_complete(self.llm, system=system, user=user)
         except UpstreamError:
             logger.warning("practice model unavailable")
             raw = ""
+        await publish_noted(self.llm, auth=auth, bearer=bearer_token, capability="CHAT", start=started)
         questions = self._parse(raw, body.count)
         return PracticeResponse(topic=topic or "General", difficulty=body.difficulty.value, questions=questions)
 

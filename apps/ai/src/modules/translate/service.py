@@ -7,6 +7,8 @@ from src.core.config import get_settings
 from src.core.exceptions import AppError, UpstreamError
 from src.modules.mcq.service import extract_json
 from src.modules.translate.schemas import LANGUAGES, TranslatedText, TranslateRequest, TranslateResponse
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import EchoLLM, get_llm, guarded_complete
 
 SYSTEM = """You are a professional school-notice translator for a school in India.
@@ -54,9 +56,10 @@ class TranslateService:
         reason = check_numbers(req.title + "\n" + req.body, title + "\n" + body)
         return TranslatedText(title=title, body=body, needs_review=reason is not None, review_reason=reason)
 
-    async def translate(self, req: TranslateRequest) -> TranslateResponse:
+    async def translate(self, req: TranslateRequest, *, auth=None, bearer: str | None = None) -> TranslateResponse:
         if isinstance(self.llm, EchoLLM):
             raise AppError("Translation is not configured", code="ai_not_configured", status_code=503)
+        started = usage_start(self.llm)
         wanted = [c for c in dict.fromkeys(req.languages) if c in LANGUAGES and c != req.source_language]
         if not wanted:
             raise AppError("No supported target language", code="bad_language", status_code=422)
@@ -69,11 +72,14 @@ class TranslateService:
                 except UpstreamError:
                     return code, None
 
-        results = await asyncio.gather(*(run(c) for c in wanted))
-        ok = {c: t for c, t in results if t is not None}
-        if not ok:
-            raise UpstreamError("Translation failed", code="translate_failed")
-        return TranslateResponse(
-            model=get_settings().qwen_chat_model, translations=ok, failed=[c for c, t in results if t is None]
-        )
+        try:
+            results = await asyncio.gather(*(run(c) for c in wanted))
+            ok = {c: t for c, t in results if t is not None}
+            if not ok:
+                raise UpstreamError("Translation failed", code="translate_failed")
+            return TranslateResponse(
+                model=get_settings().qwen_chat_model, translations=ok, failed=[c for c, t in results if t is None]
+            )
+        finally:
+            await publish_noted(self.llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
 

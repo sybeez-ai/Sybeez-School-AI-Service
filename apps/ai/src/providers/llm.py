@@ -40,9 +40,75 @@ class EchoLLM(LLMProvider):
             yield word + " "
 
 
-def _extra_body(url: str) -> dict:
-    """DashScope models think by default (slow first token); chat/practice want the direct answer."""
-    return {"enable_thinking": False} if "dashscope" in url else {}
+def dashscope_flags(url: str, model: str = "") -> dict:
+    """DashScope request flags.
+
+    qwen3.8 thinks by default and rejects ``enable_thinking: false`` (HTTP 400,
+    restricted to true). A non-streaming call also rejects thinking, so that
+    model is streamed. Other DashScope models stay non-streaming with thinking off.
+    """
+    if "dashscope" not in url:
+        return {}
+    if "qwen3.8" in (model or "").lower():
+        # The final SSE chunk carries usage only when this is requested.
+        return {"stream": True, "enable_thinking": True, "stream_options": {"include_usage": True}}
+    return {"enable_thinking": False}
+
+
+def parse_openai_sse(payload: str) -> dict:
+    """Join an OpenAI-compatible stream into one assistant message."""
+    content: list[str] = []
+    calls: dict[int, dict[str, str]] = {}
+    usage: dict | None = None
+    for line in payload.splitlines():
+        if not line.startswith("data:"):
+            continue
+        data = line.split(":", 1)[1].strip()
+        if not data or data == "[DONE]":
+            continue
+        try:
+            chunk = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        chunk_usage = chunk.get("usage")
+        if isinstance(chunk_usage, dict):
+            usage = chunk_usage
+        choices = chunk.get("choices") or []
+        if not choices:
+            continue
+        delta = choices[0].get("delta") or choices[0].get("message") or {}
+        piece = delta.get("content")
+        if piece:
+            content.append(piece)
+        for call in delta.get("tool_calls") or []:
+            index = int(call.get("index") or 0)
+            slot = calls.setdefault(index, {"id": "", "name": "", "arguments": ""})
+            if call.get("id"):
+                slot["id"] = str(call["id"])
+            function = call.get("function") or {}
+            if function.get("name"):
+                slot["name"] += str(function["name"])
+            if function.get("arguments"):
+                slot["arguments"] += str(function["arguments"])
+    message: dict = {"role": "assistant", "content": "".join(content)}
+    if calls:
+        message["tool_calls"] = [
+            {
+                "id": slot["id"],
+                "type": "function",
+                "function": {"name": slot["name"], "arguments": slot["arguments"] or "{}"},
+            }
+            for _, slot in sorted(calls.items())
+        ]
+    if usage:
+        message["usage"] = usage
+    return message
+
+
+def _extra_body(url: str, model: str = "") -> dict:
+    """Flags for a non-streaming compatible chat call. qwen3.8 is not one of those."""
+    flags = dashscope_flags(url, model)
+    return {key: value for key, value in flags.items() if key != "stream"}
 
 
 class CompatibleChatLLM(LLMProvider):
@@ -88,6 +154,11 @@ class CompatibleChatLLM(LLMProvider):
         raise UpstreamError("Language model request failed") from last
 
     async def _complete(self, key: str, url: str, model: str, *, system: str, user: str) -> str:
+        if dashscope_flags(url, model).get("stream"):
+            parts: list[str] = []
+            async for delta in self._stream(key, url, model, system=system, user=user):
+                parts.append(delta)
+            return "".join(parts)
         async with httpx.AsyncClient(timeout=self._timeout()) as client:
             resp = await client.post(
                 f"{url}/chat/completions",
@@ -99,7 +170,7 @@ class CompatibleChatLLM(LLMProvider):
                         {"role": "user", "content": user},
                     ],
                     "temperature": 0.4,
-                    **_extra_body(url),
+                    **_extra_body(url, model),
                 },
             )
             resp.raise_for_status()
@@ -158,7 +229,7 @@ class CompatibleChatLLM(LLMProvider):
                         {"role": "user", "content": user},
                     ],
                     "temperature": 0.4,
-                    **_extra_body(url),
+                    **_extra_body(url, model),
                 },
             ) as resp:
                 resp.raise_for_status()
