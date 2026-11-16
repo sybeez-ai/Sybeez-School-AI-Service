@@ -11,6 +11,7 @@ class PlatformAssistantConversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """One platform-console chat or voice session, owned by the signed-in user."""
 
     __tablename__ = "platform_assistant_conversations"
+    __table_args__ = {"schema": "platform_assistant"}
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="New chat")
@@ -19,10 +20,11 @@ class PlatformAssistantConversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 class PlatformAssistantMessage(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "platform_assistant_messages"
+    __table_args__ = {"schema": "platform_assistant"}
 
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("platform_assistant_conversations.id", ondelete="CASCADE"),
+        ForeignKey("platform_assistant.platform_assistant_conversations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
