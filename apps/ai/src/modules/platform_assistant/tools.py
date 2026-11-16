@@ -236,15 +236,28 @@ def _rewrite(call: dict, name: str, args: dict) -> dict:
     return {**call, "type": "function", "function": function}
 
 
+_DESTRUCTIVE = frozenset({
+    "delete_school",
+    "remove_school_admin",
+    "delete_plan",
+    "revoke_team_member",
+    "revoke_employee",
+    "suspend_school",
+    "archive_school",
+})
+_DESTRUCTIVE_CLICK = re.compile(r"\b(delete|remove|revoke|suspend|archive)\b", re.I)
+
+
 def _needs_confirm(call: dict) -> bool:
+    """Only destructive actions wait for the card. Creates and edits run immediately."""
     name = _name(call)
-    if name in _WRITES:
+    if name in _DESTRUCTIVE:
         return True
     if name != "click_element":
         return False
     args = _args(call)
     label = f"{args.get('label') or ''} {args.get('ref') or ''}"
-    return _MUTATING_CLICK.search(label) is not None
+    return _DESTRUCTIVE_CLICK.search(label) is not None
 
 
 def _safe_platform_read(path: str) -> bool:

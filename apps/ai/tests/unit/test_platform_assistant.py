@@ -105,8 +105,8 @@ def test_platform_chat_returns_the_write_tool_for_the_card(monkeypatch):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["confirmation_required"] is True
-    assert body["executed"] is False
+    assert body["confirmation_required"] is False
+    assert body["executed"] is True
     assert body["message"]["tool_calls"][0]["function"]["name"] == "invite_employee"
 
 
@@ -123,7 +123,7 @@ def test_platform_read_tools_point_at_console_routes():
     assert canonical_platform_route("users") is None
 
 
-def test_write_tool_is_returned_for_the_confirmation_card():
+def test_create_runs_without_a_confirmation_card():
     result = apply_platform_tool_policy({
         "message": {
             "role": "assistant",
@@ -133,11 +133,11 @@ def test_write_tool_is_returned_for_the_confirmation_card():
         "provider": "test",
         "model": "test",
     })
-    assert result["confirmation_required"] is True
-    assert result["executed"] is False
+    assert result["confirmation_required"] is False
+    assert result["executed"] is True
     call = result["message"]["tool_calls"][0]
     assert call["function"]["name"] == "invite_employee"
-    assert "confirm" in result["message"]["content"].lower()
+    assert "confirm" not in result["message"]["content"].lower()
     assert "**" not in result["message"]["content"]
 
 
@@ -187,8 +187,8 @@ def test_platform_step_offers_read_tools_and_blocks_writes(monkeypatch):
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["confirmation_required"] is True
-    assert body["executed"] is False
+    assert body["confirmation_required"] is False
+    assert body["executed"] is True
     assert body["message"]["tool_calls"][0]["function"]["name"] == "type_in_element"
     declared = [tool["name"] for tool in seen["declarations"]]
     assert "list_platform_pages" in declared
