@@ -104,6 +104,20 @@ _CLIENT_ACTIONS = _READ_ONLY | frozenset({
     "change_password",
     "set_notification_preference",
     "set_school_trial",
+    "reactivate_school",
+    "update_school_commercial",
+    "reset_school_admin_password",
+    "clear_school_admin_mfa",
+    "delete_school_subscription",
+    "delete_audit_entry",
+    "restore_employee",
+    "delete_employee",
+    "resend_employee_invite",
+    "cancel_employee_invite",
+    "update_ai_settings",
+    "mark_notifications_read",
+    "delete_platform_record",
+    "set_platform_fee",
     "click_element",
     "type_in_element",
     "select_option",
@@ -135,6 +149,20 @@ _WRITES = frozenset({
     "change_password",
     "set_notification_preference",
     "set_school_trial",
+    "reactivate_school",
+    "update_school_commercial",
+    "reset_school_admin_password",
+    "clear_school_admin_mfa",
+    "delete_school_subscription",
+    "delete_audit_entry",
+    "restore_employee",
+    "delete_employee",
+    "resend_employee_invite",
+    "cancel_employee_invite",
+    "update_ai_settings",
+    "mark_notifications_read",
+    "delete_platform_record",
+    "set_platform_fee",
     "type_in_element",
     "select_option",
 })
@@ -236,15 +264,33 @@ def _rewrite(call: dict, name: str, args: dict) -> dict:
     return {**call, "type": "function", "function": function}
 
 
+_DESTRUCTIVE = frozenset({
+    "delete_school",
+    "remove_school_admin",
+    "delete_plan",
+    "revoke_team_member",
+    "revoke_employee",
+    "suspend_school",
+    "archive_school",
+    "delete_school_subscription",
+    "delete_audit_entry",
+    "delete_employee",
+    "cancel_employee_invite",
+    "delete_platform_record",
+})
+_DESTRUCTIVE_CLICK = re.compile(r"\b(delete|remove|revoke|suspend|archive)\b", re.I)
+
+
 def _needs_confirm(call: dict) -> bool:
+    """Only destructive actions wait for the card. Creates and edits run immediately."""
     name = _name(call)
-    if name in _WRITES:
+    if name in _DESTRUCTIVE:
         return True
     if name != "click_element":
         return False
     args = _args(call)
     label = f"{args.get('label') or ''} {args.get('ref') or ''}"
-    return _MUTATING_CLICK.search(label) is not None
+    return _DESTRUCTIVE_CLICK.search(label) is not None
 
 
 def _safe_platform_read(path: str) -> bool:
