@@ -122,9 +122,12 @@ PLATFORM_SYSTEM = (
 
 PLATFORM_TOOL_NOTE = (
     "You carry out platform work by calling tools. The console runs each tool with the signed-in person's permissions. "
-    "Call a tool for a report and for any create, update, delete, suspend, archive, invite, revoke, trial, feature, "
-    "token limit, or settings change. Creates, invites, and other non-destructive updates run immediately. "
-    "Only delete, remove, revoke, suspend, and archive wait until the person presses Confirm. "
+    "Call a tool for every console action: schools (create, edit, trial, extend, renewal, commercial, reactivate, "
+    "suspend, archive, delete, admins, password reset, clear MFA, subscription), employees (add, edit role, invite, "
+    "resend, cancel, revoke, restore, delete), plans, features, AI settings and token limits, logs, notifications, "
+    "profile, password, and the Route platform fee. Creates, edits, invites, restores, and other non-destructive "
+    "updates run immediately. Only delete, remove, revoke, suspend, archive, and cancelling an invite wait until "
+    "the person presses Confirm. Upload logo needs a file from the computer; tell them to use Upload logo on the school page. "
     "Call the tool anyway. Do not say you cannot create records, and do not tell them to use the page instead of the tool. "
     "If a required name, email, school, or password is missing, ask for that in one sentence and do not invent it. "
     "platform_report kinds: schools, trials, renewals, billing, ai-tokens, sign-ins, logs. "

@@ -159,6 +159,38 @@ def test_open_platform_page_navigates_to_the_real_route():
     assert "/platform/schools" in result["message"]["content"]
 
 
+def test_new_console_tools_keep_parity_and_confirm_only_destructive_ones():
+    immediate = apply_platform_tool_policy({
+        "message": {
+            "role": "assistant",
+            "content": "Reactivating.",
+            "tool_calls": [_call("reactivate_school", {"school_id": SCHOOL_ID, "confirm_name": "North"})],
+        }
+    })
+    assert immediate["confirmation_required"] is False
+    assert immediate["message"]["tool_calls"][0]["function"]["name"] == "reactivate_school"
+
+    destructive = apply_platform_tool_policy({
+        "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [_call("delete_audit_entry", {"log_id": "log-1"})],
+        }
+    })
+    assert destructive["confirmation_required"] is True
+    assert "confirm" in destructive["message"]["content"].lower()
+
+    dropped = apply_platform_tool_policy({
+        "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [_call("upload_school_logo", {})],
+        }
+    })
+    assert "tool_calls" not in dropped["message"]
+    assert "not available" in dropped["message"]["content"].lower()
+
+
 def test_platform_step_offers_read_tools_and_blocks_writes(monkeypatch):
     seen: dict = {}
 
