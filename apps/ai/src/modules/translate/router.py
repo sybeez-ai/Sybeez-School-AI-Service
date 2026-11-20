@@ -8,9 +8,11 @@ from collections import OrderedDict
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from src.api.dependencies import AuthDep
+from src.api.dependencies import AuthDep, BearerToken
 from src.core.exceptions import AppError, ForbiddenError, UpstreamError
 from src.core.rate_limit import limiter
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import get_llm
 
 logger = logging.getLogger("sybeez.ai.translate")
@@ -58,7 +60,7 @@ def _parse(raw: str, n: int) -> list[str] | None:
 
 
 @router.post("")
-async def translate(body: TranslateRequest, auth: AuthDep):
+async def translate(body: TranslateRequest, auth: AuthDep, bearer: BearerToken):
     if auth.role != "PARENT":
         raise ForbiddenError("Portal translation is available to parents only")
     lang = body.lang.lower()
@@ -71,11 +73,15 @@ async def translate(body: TranslateRequest, auth: AuthDep):
         if not await limiter.allow(f"translate:{auth.user_id}", limit=30):
             raise AppError("Slow down a little", code="rate_limited", status_code=429)
         system = SYSTEM.format(lang=LANGUAGES[lang])
+        llm = get_llm()
+        started = usage_start(llm)
         try:
-            raw = await get_llm().complete(system=system, user=json.dumps(missing, ensure_ascii=False))
+            raw = await llm.complete(system=system, user=json.dumps(missing, ensure_ascii=False))
         except Exception as exc:  # provider failure: the UI keeps English
             logger.warning("translate provider failed: %s", type(exc).__name__)
+            await publish_noted(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
             raise UpstreamError("Translation is unavailable right now") from None
+        await publish_noted(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
         parsed = _parse(raw, len(missing))
         if parsed is None:
             raise UpstreamError("Translation is unavailable right now")

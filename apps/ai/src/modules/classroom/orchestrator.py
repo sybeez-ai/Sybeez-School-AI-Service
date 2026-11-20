@@ -18,6 +18,8 @@ from src.modules.chat.persona import assistant_name
 from src.modules.classroom.board import chalk_lesson
 from src.modules.classroom.material import ClassroomMaterial
 from src.modules.teacher.safety import assess
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 
 logger = logging.getLogger("sybeez.ai.classroom")
 
@@ -114,7 +116,9 @@ class ClassroomOrchestrator:
             raise AppError(DAILY_LIMIT_MESSAGE, code="rate_limited", status_code=429)
         quotes = citations_for(page, body.message)
         quote = quotes[0]["quote"] if quotes else ""
+        started = usage_start(self.llm)
         speech = await self._explain(page, body.message, quote, list(body.session_memory))
+        await publish_noted(self.llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
         lesson = chalk_lesson(page.get("topic") or "", speech, quote)
         for stage in lesson["stages"]:
             saved = await self.material.save_picture(

@@ -43,3 +43,28 @@ async def publish_usage(record: dict | None, bearer: str | None, message=None) -
 async def publish_llm_usage(provider: object, *, auth, bearer: str | None, capability: str = "CHAT", start: int = 0, message=None) -> dict | None:
     record = collect_usage(provider, auth=auth, capability=capability, start=start)
     return await publish_usage(record, bearer, message)
+
+
+async def publish_noted(provider: object, *, auth, bearer: str | None, capability: str = "CHAT", start: int = 0) -> dict | None:
+    """Store each provider usage noted since `start`. One model call is one row."""
+    from src.modules.usage.tokens import usage_record, usage_start
+
+    if provider is None or auth is None:
+        return None
+    items = list(getattr(provider, "usages", None) or [])
+    begin = start if start >= 0 else 0
+    if begin > len(items):
+        begin = usage_start(provider)
+    last = None
+    for item in items[begin:]:
+        last = await publish_usage(
+            usage_record(
+                item,
+                school_id=getattr(auth, "school_id", None),
+                user_id=getattr(auth, "user_id", None),
+                role=getattr(auth, "role", None) or "",
+                capability=capability,
+            ),
+            bearer,
+        )
+    return last

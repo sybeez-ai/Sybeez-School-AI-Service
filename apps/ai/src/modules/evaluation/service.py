@@ -6,6 +6,8 @@ from src.core.exceptions import UpstreamError
 from src.core.security import AuthContext
 from src.modules.context.service import ContextService
 from src.modules.evaluation.schemas import EvaluationRequest, EvaluationResponse
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import get_llm, guarded_complete
 from src.shared.utils import load_prompt
 
@@ -33,11 +35,13 @@ class EvaluationService:
             'Return JSON: {"correct": bool, "score": 0-1, "feedback": str, '
             '"concepts_demonstrated": [], "concepts_missing": []}'
         )
+        started = usage_start(self.llm)
         try:
             raw = await guarded_complete(self.llm, system=system, user=user)
         except UpstreamError:
             # Do not guess "correct" from the length of the answer when the model is down.
             logger.warning("evaluation model unavailable")
+            await publish_noted(self.llm, auth=auth, bearer=bearer_token, capability="CHAT", start=started)
             return EvaluationResponse(
                 correct=False,
                 score=0.0,
@@ -46,6 +50,7 @@ class EvaluationService:
                 concepts_missing=[],
             )
         parsed = self._parse(raw, body.answer)
+        await publish_noted(self.llm, auth=auth, bearer=bearer_token, capability="CHAT", start=started)
         return parsed
 
     def _parse(self, raw: str, answer: str) -> EvaluationResponse:

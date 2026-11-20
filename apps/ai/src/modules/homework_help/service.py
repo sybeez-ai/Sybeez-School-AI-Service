@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from src.core.exceptions import AppError, UpstreamError
 from src.modules.mcq.service import extract_json
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import EchoLLM, get_llm, guarded_complete
 
 TEACH_SYSTEM = (
@@ -78,8 +80,9 @@ async def gives_answer(llm, question: str, reply: str) -> bool:
     return not (isinstance(data, dict) and data.get("gives_final_answer") is False)
 
 
-async def help_student(body: HelpRequest) -> HelpResponse:
+async def help_student(body: HelpRequest, *, auth=None, bearer: str | None = None) -> HelpResponse:
     llm = _llm()
+    started = usage_start(llm)
     held = False
     extra = ""
     try:
@@ -91,4 +94,6 @@ async def help_student(body: HelpRequest) -> HelpResponse:
             extra = "Your last reply gave away too much. Give only a smaller hint and a question. No answer."
     except UpstreamError:
         held = True
+    finally:
+        await publish_noted(llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
     return HelpResponse(reply=FALLBACK.get(body.language, FALLBACK["English"]), held_back_answer=True)

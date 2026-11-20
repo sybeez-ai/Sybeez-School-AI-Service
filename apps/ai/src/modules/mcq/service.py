@@ -4,6 +4,8 @@ import re
 
 from src.core.exceptions import AppError, UpstreamError
 from src.modules.mcq.schemas import McqDraftQuestion, McqGenerateRequest, McqGenerateResponse
+from src.modules.usage.report import publish_noted
+from src.modules.usage.tokens import usage_start
 from src.providers.llm import EchoLLM, get_llm, guarded_complete
 from src.shared.utils import load_prompt
 
@@ -103,9 +105,16 @@ class McqService:
             lines.append("Questions to avoid:\n" + "\n".join(f"- {p}" for p in body.avoid_prompts))
         return "\n".join(lines)
 
-    async def generate(self, body: McqGenerateRequest) -> McqGenerateResponse:
+    async def generate(self, body: McqGenerateRequest, *, auth=None, bearer: str | None = None) -> McqGenerateResponse:
         if isinstance(self.llm, EchoLLM):
             raise McqNotConfigured()
+        started = usage_start(self.llm)
+        try:
+            return await self._generate(body)
+        finally:
+            await publish_noted(self.llm, auth=auth, bearer=bearer, capability="CHAT", start=started)
+
+    async def _generate(self, body: McqGenerateRequest) -> McqGenerateResponse:
         system = load_prompt("mcq/generate.txt")
         # Ask for a little extra so duplicates/invalid items can be dropped.
         ask = min(body.count + max(2, body.count // 4), 40)

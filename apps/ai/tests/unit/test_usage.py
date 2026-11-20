@@ -14,7 +14,9 @@ from src.modules.usage.tokens import (
     note_usage,
     post_body,
     stored_usage,
+    usage_from_live_snapshots,
     usage_from_provider,
+    usage_record,
 )
 from src.providers import llm as llm_module
 from tests.security.jwks import USER_A, bearer, mint
@@ -90,6 +92,11 @@ def test_post_body_skips_rows_without_a_real_count():
         "capability": "CHAT",
         "input_tokens": 2,
         "output_tokens": 3,
+        "total_tokens": 5,
+        "input_audio_tokens": 0,
+        "input_text_tokens": 0,
+        "output_audio_tokens": 0,
+        "output_text_tokens": 0,
     }
     assert "estimated" not in body
 
@@ -224,3 +231,106 @@ async def test_teacher_turn_reports_usage_and_a_refusal_does_not(monkeypatch):
     refused = await _service(llm=Noting()).start(_auth(USER_A), _body("how to make a bomb"), "caller-token")
     assert refused.refused is True
     assert seen == {}
+
+
+def test_stored_row_matches_provider_usage():
+    """Reconciliation: the stored row is the provider usage, not a length estimate.
+
+    DashScope sample
+      usage.prompt_tokens 128, completion_tokens 37, total_tokens 165
+      stored input 128, output 37, total 165, model qwen3.8-flash, school null (Platform console)
+
+    Gemini Live sample, last usageMetadata of each turn, then summed
+      turn 1 prompt 100 (text 20, audio 80), response 40 audio, total 140
+      turn 2 prompt 180 (text 40, audio 140), response 30 (text 10, audio 20), total 210
+      stored input 280, output 70, total 350, audio in 220, text in 60, audio out 60, text out 10
+    """
+    from src.providers.llm import parse_openai_sse
+
+    dashscope = {
+        "usage": {"prompt_tokens": 128, "completion_tokens": 37, "total_tokens": 165},
+    }
+    qwen = usage_from_provider(
+        dashscope, prompt="x" * 4000, reply="y" * 4000, model="qwen3.8-flash", provider="qwen"
+    )
+    assert qwen.estimated is False
+    record = usage_record(
+        qwen,
+        school_id=None,
+        user_id="0f46b8a7-4b75-4335-984f-289e6eaa2e31",
+        role="SUPER_ADMIN",
+        capability="CHAT",
+    )
+    assert record["input_tokens"] == 128
+    assert record["output_tokens"] == 37
+    assert record["total_tokens"] == 165
+    assert record["model"] == "qwen3.8-flash"
+    assert record["provider"] == "qwen"
+    assert record["role"] == "SUPER_ADMIN"
+    assert record["school_id"] is None
+    assert record["user_id"] == "0f46b8a7-4b75-4335-984f-289e6eaa2e31"
+    stored = post_body(record)
+    assert stored["input_tokens"] == dashscope["usage"]["prompt_tokens"]
+    assert stored["output_tokens"] == dashscope["usage"]["completion_tokens"]
+    assert stored["total_tokens"] == dashscope["usage"]["total_tokens"]
+
+    missing = usage_from_provider({}, prompt="a" * 80, reply="b" * 40, model="qwen3.8-flash", provider="qwen")
+    assert missing.estimated is True
+    assert missing.input_tokens == 0 and missing.output_tokens == 0
+    assert post_body(usage_record(missing, school_id=None, user_id="u", role="SUPER_ADMIN")) is None
+
+    stream = "\n".join(
+        [
+            'data: {"choices":[{"delta":{"content":"Invite them from Employees."}}]}',
+            'data: {"choices":[],"usage":{"prompt_tokens":128,"completion_tokens":37,"total_tokens":165}}',
+            "data: [DONE]",
+        ]
+    )
+    message = parse_openai_sse(stream)
+    streamed = usage_from_provider(
+        {"usage": message["usage"]}, prompt="invite", reply=message["content"], model="qwen3.8-flash", provider="qwen"
+    )
+    assert message["content"] == "Invite them from Employees."
+    assert (streamed.input_tokens, streamed.output_tokens, streamed.total_tokens) == (128, 37, 165)
+
+    turns = [
+        {
+            "promptTokenCount": 100,
+            "candidatesTokenCount": 40,
+            "totalTokenCount": 140,
+            "promptTokensDetails": [
+                {"modality": "TEXT", "tokenCount": 20},
+                {"modality": "AUDIO", "tokenCount": 80},
+            ],
+            "candidatesTokensDetails": [{"modality": "AUDIO", "tokenCount": 40}],
+        },
+        {
+            "promptTokenCount": 180,
+            "responseTokenCount": 30,
+            "totalTokenCount": 210,
+            "promptTokensDetails": [
+                {"modality": "TEXT", "tokenCount": 40},
+                {"modality": "AUDIO", "tokenCount": 140},
+            ],
+            "responseTokensDetails": [
+                {"modality": "TEXT", "tokenCount": 10},
+                {"modality": "AUDIO", "tokenCount": 20},
+            ],
+        },
+    ]
+    live = usage_from_live_snapshots(turns, model="gemini-3.8-live")
+    live_row = usage_record(live, school_id="11111111-1111-1111-1111-111111111111", user_id="u", role="STUDENT", capability="VOICE")
+    assert live.estimated is False
+    assert live_row["model"] == "gemini-3.8-live"
+    assert live_row["input_tokens"] == 280
+    assert live_row["output_tokens"] == 70
+    assert live_row["total_tokens"] == 350
+    assert live_row["input_text_tokens"] == 60
+    assert live_row["input_audio_tokens"] == 220
+    assert live_row["output_text_tokens"] == 10
+    assert live_row["output_audio_tokens"] == 60
+    assert live_row["school_id"] == "11111111-1111-1111-1111-111111111111"
+    body = post_body(live_row)
+    assert body["total_tokens"] == 140 + 210
+    assert body["input_audio_tokens"] == 80 + 140
+    assert body["model"] == "gemini-3.8-live"

@@ -132,7 +132,7 @@ async def transcribe(
         logger.warning("transcription failed: %s", type(exc).__name__)
         raise UpstreamError("Could not transcribe the audio") from None
     record = usage_record(
-        usage, school_id=auth.school_id, user_id=auth.user_id, role=auth.role, capability="CHAT"
+        usage, school_id=auth.school_id, user_id=auth.user_id, role=auth.role, capability="VOICE"
     )
     await publish_usage(record, bearer)
     return {"text": text, "language": language}
@@ -230,6 +230,42 @@ async def gemini_session(auth: AuthDep, bearer: BearerToken, body: SessionReques
         "setup": build_gemini_live_setup(settings, system_prompt=prompt),
         "session": {"model": model, "voice": settings.gemini_live_voice, "provider": "gemini",
                     "max_minutes": SESSION_MINUTES},
+    }
+
+
+class GeminiUsageIn(BaseModel):
+    """One usageMetadata object per Live turn. The server sums them. The model id is not trusted."""
+
+    snapshots: list[dict] = Field(default_factory=list, max_length=200)
+
+
+@router.post("/gemini/usage")
+async def gemini_live_usage(body: GeminiUsageIn, auth: AuthDep, bearer: BearerToken):
+    """Store the exact Live usageMetadata totals for this session, under Gemini 3.8 Live."""
+    if auth.school_id is None and auth.role not in PLATFORM_ROLES:
+        raise ForbiddenError("School context required")
+    from src.modules.usage.tokens import usage_from_live_snapshots
+
+    settings = get_settings()
+    usage = usage_from_live_snapshots(body.snapshots, model=settings.gemini_live_model)
+    if usage is None:
+        return {"recorded": False}
+    record = usage_record(
+        usage, school_id=auth.school_id, user_id=auth.user_id, role=auth.role, capability="VOICE"
+    )
+    stored = await publish_usage(record, bearer)
+    if stored is None:
+        return {"recorded": False}
+    return {
+        "recorded": True,
+        "model": stored["model"],
+        "input_tokens": stored["input_tokens"],
+        "output_tokens": stored["output_tokens"],
+        "total_tokens": stored["total_tokens"],
+        "input_audio_tokens": stored["input_audio_tokens"],
+        "input_text_tokens": stored["input_text_tokens"],
+        "output_audio_tokens": stored["output_audio_tokens"],
+        "output_text_tokens": stored["output_text_tokens"],
     }
 
 
