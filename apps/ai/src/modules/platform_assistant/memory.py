@@ -59,7 +59,12 @@ async def _session_for(user_id: uuid.UUID) -> AsyncSession:
     from src.core.database import AsyncSessionLocal, install_tenant_context
 
     session = AsyncSessionLocal()
-    install_tenant_context(session, school_id=PLATFORM_SCHOOL_ID, user_id=user_id)
+    # Platform rows use a sentinel school id. The restrictive policies accept the
+    # write only when this session turns bypass on. Queries still filter by that
+    # school id and the caller's user id.
+    install_tenant_context(
+        session, school_id=PLATFORM_SCHOOL_ID, user_id=user_id, role="SERVICE", bypass=True
+    )
     return session
 
 

@@ -53,7 +53,9 @@ def pin_model(provider: object) -> str | None:
     if stopped:
         return stopped
     model = assigned_model()
-    if not model:
+    # Chat stays on qwen3.8-flash from the service config. A stale settings row
+    # that names Gemini must not move text calls onto the voice model.
+    if not model or "qwen" not in model.lower():
         return None
     provider.model = model
     candidates = getattr(provider, "candidates", None)
