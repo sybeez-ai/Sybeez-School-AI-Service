@@ -139,6 +139,11 @@ async def _gemini(settings, audio: bytes, mime: str) -> tuple[str, str, TokenUsa
         raise AppError(VOICE_CREDIT_MESSAGE, code="gemini_credits_depleted", status_code=402)
     if response.status_code >= 400:
         logger.warning("gemini transcription rejected: status=%s", response.status_code)
+        if response.status_code == 404:
+            raise UpstreamError(
+                f"Dictation model is unavailable ({model}). "
+                "Set GEMINI_TRANSCRIBE_MODEL to a current audio-capable generateContent model."
+            )
         raise UpstreamError("Could not transcribe the audio")
     try:
         payload = response.json()

@@ -361,7 +361,7 @@ async def agent_step(body: StepRequest, auth: AuthDep, bearer: BearerToken):
         if student:
             extra += "\n" + (await profile_prompt_block(auth))[:900]
         declarations = list(body.tools)
-        override = None
+        override = agent.SCHOOL_ADMIN_SYSTEM if body.portal == "school-admin" else None
     messages = []
     for m in body.messages:
         item: dict = {"role": m.role, "content": m.content or ""}
